@@ -219,8 +219,8 @@ body:not(.shop) .shoponly,body:not(.shop) .nx,body:not(.shop) .shopbar{display:n
 @keyframes tin{from{opacity:0;transform:translate(-50%,10px)}}
 .toast button{font-weight:600;white-space:nowrap;color:inherit;text-decoration:underline;text-underline-offset:3px}
 .gate{position:fixed;inset:0;z-index:40;background:var(--bg);display:grid;place-items:center;padding:24px;text-align:center}
-.gate .logo{width:64px;height:64px;border-radius:18px;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;margin:0 auto 20px}
-.gate .logo .i{width:32px;height:32px;stroke-width:2.2}
+.gate .logo{width:60px;height:60px;border-radius:17px;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;margin:0 auto 20px}
+.gate .logo .i{width:28px;height:28px;stroke-width:1.8}
 .gate h1{font-size:24px;font-weight:600;letter-spacing:-.015em;margin-bottom:6px}
 .gate p{color:var(--mute);max-width:300px;margin:0 auto 24px;font-size:15px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -711,12 +711,18 @@ PAGES.templates = () => {
 function packPage(kind, argName){
   return () => {
     const id = args[argName], p = S[kind][id]; if (!p) return gone();
+    const pad = args.padded; setTimeout(() => { if (args.padded === pad) args.padded = null; }, 0);
     const items = p.items || [], tpl = kind === "templates", a = " data-kind='" + kind + "' data-k='" + esc(id) + "'";
     return {title:tpl ? p.name : cap(dateStr(p.at)), html:
+      (tpl ? "<div class='group'><label class='cell'><span class='lbl'>Naam</span><input class='inl grow' id='tplName' data-k='" + esc(id) + "' value='" + esc(p.name) + "' enterkeyhint='done'></label></div>" : "") +
       "<p class='lead'>" + nProd(items.length) + (tpl ? (storeName(p.store) ? " · alleen voor " + esc(storeName(p.store)) : "") : (p.stores ? " · " + esc(p.stores) : "")) + "</p>" +
       "<div class='line'><button class='btn grow' data-a='puse'" + a + ">Toevoegen aan lijst</button><button class='btn sec grow' data-a='pnew'" + a + ">Als nieuwe lijst</button></div>" +
       "<p class='hint'>Toevoegen telt op bij wat al op de lijst staat. Als nieuwe lijst vervangt de huidige lijst.</p>" +
-      "<h3 class='ch'>Producten</h3><div class='group'>" + items.map((i, n) => "<div class='cell'><span class='grow'>" + esc(i.name) + "</span><span class='qty'>" + esc(badge(i)) + "</span>" + (tpl ? "<button class='ib sm' data-a='pitem' data-k='" + esc(id) + "' data-i='" + n + "' aria-label='Uit template halen'>" + ico("x") + "</button>" : "") + "</div>").join("") + "</div>" +
+      "<h3 class='ch'>Producten</h3>" +
+      (tpl ? "<div class='line' style='margin-bottom:10px'><input class='field' id='tplAdd' placeholder='Toevoegen, bv. 2 paprika of 500 g gehakt' enterkeyhint='done' autocapitalize='sentences' data-enter='padd'><button class='btn' data-a='padd'>Toevoegen</button></div>" : "") +
+      (items.length ? "<div class='group'>" + items.map((i, n) => { const b = " data-k='" + esc(id) + "' data-i='" + n + "'"; return "<div class='cell" + (args.padded === n ? " flash" : "") + "'><span class='grow'>" + esc(i.name) + "</span>" + (tpl
+        ? "<div class='step'><button data-a='pstep'" + b + " data-d='-1' aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(i) + "</b><button data-a='pstep'" + b + " data-d='1' aria-label='Meer'>" + ico("plus") + "</button></div><button class='ib sm' data-a='pitem'" + b + " aria-label='Uit template halen'>" + ico("x") + "</button>"
+        : "<span class='qty'>" + esc(badge(i)) + "</span>") + "</div>"; }).join("") + "</div>" : "<p class='hint' style='margin:0 2px 14px'>Deze template is nog leeg.</p>") +
       "<button class='btn text danger wide' data-a='pdel'" + a + ">" + (tpl ? "Template verwijderen" : "Uit Vorige lijsten verwijderen") + "</button>"};
   };
 }
@@ -785,7 +791,14 @@ function render(force){
   else {
     P = PAGES[route]();
     const ae = document.activeElement;
-    if (force || !(ae && /INPUT|SELECT/.test(ae.tagName) && $("page").contains(ae))) $("page").innerHTML = P.html;
+    const typing = ae && /INPUT|SELECT/.test(ae.tagName) && $("page").contains(ae);
+    if (force || !typing) {
+      // Half getypte tekst in toevoegvelden blijft staan als de pagina opnieuw getekend wordt.
+      const keep = [...$("page").querySelectorAll("input.field")].filter(i => i.id && i.value).map(i => [i.id, i.value]), foc = typing && ae.id;
+      $("page").innerHTML = P.html;
+      keep.forEach(([id, v]) => { if ($(id)) $(id).value = v; });
+      if (foc && $(foc) && $(foc).classList.contains("field")) $(foc).focus();
+    }
   }
   const sub = !!PARENT[route];
   $("barIn").innerHTML = (sub ? "<button class='ib back' data-a='back' aria-label='Terug'>" + ico("chevL") + "</button>" : "") + "<div class='grow'><h1" + (sub ? " class='sm'" : "") + ">" + esc(P.title) + "</h1>" + (P.sub ? "<div class='sub'>" + P.sub + "</div>" : "") + "</div>" + (P.act || "");
@@ -849,7 +862,30 @@ const ACT = {
   puse:(k, t) => { const p = S[t.dataset.kind][k]; if (p) applyPack(packName(t.dataset.kind, p), p.items, false); },
   pnew:(k, t) => { const p = S[t.dataset.kind][k]; if (p) applyPack(packName(t.dataset.kind, p), p.items, true); },
   pdel:(k, t) => { const c = t.dataset.kind, old = S[c][k]; back(); DB.del(c, k); toast("Verwijderd", "Ongedaan maken", () => DB.set(c, k, old)); },
-  pitem:(k, t) => { const tp = S.templates[k]; if (tp) DB.set("templates", k, {items:(tp.items || []).filter((x, i) => i !== +t.dataset.i)}); },
+  pitem:(k, t) => { const tp = S.templates[k]; if (!tp) return; DB.set("templates", k, {items:(tp.items || []).filter((x, i) => i !== +t.dataset.i)}); render(true); },
+  pstep:(k, t) => {
+    const tp = S.templates[k]; if (!tp) return;
+    const items = (tp.items || []).map(x => ({...x})), i = +t.dataset.i, it = items[i]; if (!it) return;
+    const q = (it.qty || 1) + (+t.dataset.d) * stepOf(it.unit);
+    if (q <= 0) items.splice(i, 1); else it.qty = Math.round(q * 100) / 100;
+    DB.set("templates", k, {items}); render(true);
+  },
+  padd:() => {
+    const inp = $("tplAdd"), a = parse(inp.value), key = keyOf(a.name), k = args.template, tp = S.templates[k];
+    if (!key || !tp) return inp.focus();
+    const p = product(key), items = (tp.items || []).map(x => ({...x})), i = items.findIndex(x => keyOf(x.name) === key);
+    if (i >= 0) {
+      const ex = items[i], d = a.explicit ? convert(a.qty, a.unit || "", ex.unit || "") : stepOf(ex.unit);
+      if (d === null) toast(ex.name + " staat er al als " + amount(ex)); else ex.qty = Math.round(((ex.qty || 1) + d) * 100) / 100;
+      args.padded = i;
+    } else {
+      const unit = a.explicit ? (a.unit || "") : ((p && p.unit) || "");
+      items.push({name:p ? p.name : cap(a.name), qty:a.explicit ? a.qty : ((p && p.unit && p.dq) || defQty(unit)), unit, cat:p ? p.cat : guessCat(a.name), note:""});
+      args.padded = items.length - 1;
+    }
+    inp.value = ""; inp.focus();
+    DB.set("templates", k, {items}); render(true);
+  },
   tsave:() => {
     const inp = $("tName"), name = inp.value.trim(); if (!name) return inp.focus();
     const st = $("tStore") && $("tStore").checked ? store().id : "";
@@ -880,6 +916,7 @@ document.addEventListener("click", e => {
 document.addEventListener("change", e => {
   const t = e.target, k = t.dataset.k;
   if (t.id === "noteIn") DB.set("items", k, {note:t.value.trim()});
+  else if (t.id === "tplName") { const n = t.value.trim(); if (n && S.templates[k]) DB.set("templates", k, {name:n}); else render(true); }
   else if (t.id === "amtIn") { const n = parseFloat(t.value.replace(",", ".")); t.blur(); if (n > 0) DB.set("items", k, {qty:Math.round(n * 100) / 100}); else render(true); }
   else if (t.id === "catSel") { t.blur(); ACT.setcat(k, t.value); }
   else if (t.id === "storeSel") { t.blur(); ACT.setstore(k, t.value); }
@@ -887,7 +924,7 @@ document.addEventListener("change", e => {
 document.addEventListener("keydown", e => {
   const t = e.target; if (e.key !== "Enter" || !t.dataset) return;
   if (t.dataset.enter) { e.preventDefault(); ACT[t.dataset.enter](); }
-  else if (t.id === "amtIn" || t.id === "noteIn") t.blur();
+  else if (t.id === "amtIn" || t.id === "noteIn" || t.id === "tplName") t.blur();
 });
 document.addEventListener("focusout", e => { if ($("page").contains(e.target)) setTimeout(() => { if (route !== "lijst") render(); }, 0); });
 $("addForm").addEventListener("submit", e => {
@@ -965,7 +1002,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 
 /* ---------- start ---------- */
 applyTheme(); buildTabs();
-$("addIco").outerHTML = ico("plus"); $("addBtn").innerHTML = ico("arrowUp"); $("gateLogo").innerHTML = ico("check");
+$("addIco").outerHTML = ico("plus"); $("addBtn").innerHTML = ico("arrowUp"); $("gateLogo").innerHTML = ico("list");
 const cfg = window.FIREBASE_CONFIG || {};
 if (cfg.apiKey) { DB = Fire; Fire.init(cfg).catch(e => gate("Firebase laden mislukt: " + (e.message || e))); }
 else { DB = Local; Local.init(); }
