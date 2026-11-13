@@ -440,9 +440,11 @@ const Fire = {
   },
   ref(c, id){ return this.F.doc(this.db, PATH[c], id); },
   fail(e){ toast(e.code === "permission-denied" ? "Geen toegang" : "Opslaan mislukt: " + (e.code || e)); },
-  set(c, id, d){ this.F.setDoc(this.ref(c, id), d, {merge:true}).catch(this.fail); },
-  del(c, id){ this.F.deleteDoc(this.ref(c, id)).catch(this.fail); },
-  inc(c, id, f, n){ this.F.updateDoc(this.ref(c, id), {[f]:this.F.increment(n)}).catch(this.fail); },
+  // Wijzigingen meteen lokaal doorvoeren en tonen; Firebase bevestigt daarna via de snapshot.
+  // Zo zie je nooit even de oude waarde terug na een wijziging.
+  set(c, id, d){ S[c][id] = {...(S[c][id] || {}), ...d}; render(); this.F.setDoc(this.ref(c, id), d, {merge:true}).catch(e => this.fail(e)); },
+  del(c, id){ delete S[c][id]; render(); this.F.deleteDoc(this.ref(c, id)).catch(e => this.fail(e)); },
+  inc(c, id, f, n){ if (S[c][id]) { S[c][id][f] = (S[c][id][f] || 0) + n; render(); } this.F.updateDoc(this.ref(c, id), {[f]:this.F.increment(n)}).catch(e => this.fail(e)); },
   signOut(){ ready = false; this.U.signOut(this.auth); }
 };
 function gate(msg, btn, fn, showOut){
@@ -905,8 +907,10 @@ document.addEventListener("pointerdown", e => {
   const g = e.target.closest(".grip"); if (!g || drag || dragLock || e.button > 0) return;
   e.preventDefault();
   const el = g.closest(".cell"), box = el.parentElement, items = [...box.children], from = items.indexOf(el);
-  drag = {el, box, items, from, to:from, id:e.pointerId, cy:e.clientY, y0:e.clientY + window.scrollY, h:el.offsetHeight,
-    mids:items.map(i => i.offsetTop + i.offsetHeight / 2), min:-el.offsetTop, max:box.scrollHeight - el.offsetTop - el.offsetHeight};
+  // Posities ten opzichte van de lijst zelf, zodat de grenzen kloppen waar de lijst ook op de pagina staat.
+  const tops = items.map(i => i.getBoundingClientRect().top), hs = items.map(i => i.offsetHeight), last = items.length - 1;
+  drag = {el, box, items, from, to:from, id:e.pointerId, cy:e.clientY, y0:e.clientY + window.scrollY, h:hs[from], hs,
+    mids:tops.map((t, i) => t - tops[0] + hs[i] / 2), min:tops[0] - tops[from], max:tops[last] + hs[last] - tops[from] - hs[from]};
   dragLock = true;
   try { g.setPointerCapture(e.pointerId); } catch {}
   box.classList.add("sorting"); el.classList.add("drag");
@@ -915,8 +919,10 @@ document.addEventListener("pointerdown", e => {
 });
 function moveDrag(){
   const d = drag, dy = Math.max(d.min, Math.min(d.max, d.cy + window.scrollY - d.y0)), c = d.mids[d.from] + dy;
+  d.dy = dy;
   let to = d.from;
-  d.mids.forEach((m, i) => { if (i < d.from && c < m && i < to) to = i; if (i > d.from && c > m && i > to) to = i; });
+  // Op of voorbij het midden van een ander schap telt als gepasseerd, zodat ook de eerste en laatste plek bereikbaar zijn.
+  d.mids.forEach((m, i) => { if (i < d.from && c <= m && i < to) to = i; if (i > d.from && c >= m && i > to) to = i; });
   d.to = to;
   d.el.style.transform = "translateY(" + dy + "px)";
   d.items.forEach((it, i) => {
@@ -936,8 +942,8 @@ function endDrag(e){
   const d = drag; if (!d || (e && e.pointerId !== d.id)) return;
   drag = null; cancelAnimationFrame(d.raf);
   let off = 0;
-  if (d.to > d.from) for (let i = d.from + 1; i <= d.to; i++) off += d.items[i].offsetHeight;
-  else for (let i = d.to; i < d.from; i++) off -= d.items[i].offsetHeight;
+  if (d.to > d.from) for (let i = d.from + 1; i <= d.to; i++) off += d.hs[i];
+  else for (let i = d.to; i < d.from; i++) off -= d.hs[i];
   d.el.classList.add("drop"); d.el.style.transform = "translateY(" + off + "px)";
   setTimeout(() => {
     dragLock = false;
