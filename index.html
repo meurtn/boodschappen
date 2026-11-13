@@ -186,6 +186,16 @@ button.chip:active{transform:scale(.96)}
 .empty .eb{width:52px;height:52px;border-radius:50%;background:var(--fill);display:grid;place-items:center;margin:0 auto 14px;color:var(--mute)}
 .empty h2{font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px}
 
+/* slepen */
+.grip{width:44px;height:44px;margin:-8px -10px -8px 0;display:grid;place-items:center;color:var(--faint);touch-action:none;cursor:grab;flex:none}
+.grip .i{width:20px;height:20px}
+.group.sorting{overflow:visible}
+.group.sorting .cell{transition:transform .2s var(--ease)}
+.group.sorting .cell.drag{position:relative;z-index:3;transition:box-shadow .2s;background:var(--surface);border-radius:12px;border-bottom-color:transparent;box-shadow:0 10px 28px rgba(0,0,0,.16),0 0 0 1px var(--line);cursor:grabbing}
+.group.sorting .cell.drag .grip{color:var(--acc);cursor:grabbing}
+.group.sorting .cell.drag.drop{transition:transform .19s var(--ease),box-shadow .19s;box-shadow:none}
+body:has(.sorting){user-select:none;-webkit-user-select:none}
+
 /* tabbalk */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--bar);-webkit-backdrop-filter:saturate(1.4) blur(14px);backdrop-filter:saturate(1.4) blur(14px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
 .tabs>div{max-width:560px;margin:0 auto;display:flex}
@@ -535,6 +545,7 @@ const IC = {
   pin:"<path d='M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z'/><circle cx='12' cy='10' r='2.5'/>",
   clock:"<circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/>",
   share:"<path d='M12 15V3M8 7l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7'/>",
+  grip:"<path d='M5 8h14M5 12h14M5 16h14'/>",
   sliders:"<path d='M4 7h10M18 7h2M4 17h2M10 17h10'/><circle cx='16' cy='7' r='2'/><circle cx='8' cy='17' r='2'/>"
 };
 const ico = n => "<svg class='i' viewBox='0 0 24 24' aria-hidden='true'>" + IC[n] + "</svg>";
@@ -732,8 +743,8 @@ PAGES.looproute = () => {
   const st = storeList().find(s => s.id === args.looproute); if (!st) return gone();
   const ord = order(st), mv = args.moved; args.moved = null;
   return {title:"Looproute " + st.name, html:
-    "<p class='lead'>Zet de schappen in de volgorde waarin je door de winkel loopt.</p><div class='group'>" +
-    ord.map((c, i) => "<div class='cell" + (mv === c ? " flash" : "") + "'><span class='em'>" + CAT[c].ico + "</span><span class='grow'>" + esc(CAT[c].name) + "</span><button class='ib sm' data-a='smove' data-k='" + i + "' data-d='-1'" + (i ? "" : " disabled") + " aria-label='Omhoog'>" + ico("up") + "</button><button class='ib sm' data-a='smove' data-k='" + i + "' data-d='1'" + (i < ord.length - 1 ? "" : " disabled") + " aria-label='Omlaag'>" + ico("down") + "</button></div>").join("") + "</div>" +
+    "<p class='lead'>Sleep de schappen aan het greepje rechts in de volgorde waarin je door de winkel loopt.</p><div class='group' id='sortList'>" +
+    ord.map(c => "<div class='cell" + (mv === c ? " flash" : "") + "'><span class='em'>" + CAT[c].ico + "</span><span class='grow'>" + esc(CAT[c].name) + "</span><span class='grip' aria-hidden='true'>" + ico("grip") + "</span></div>").join("") + "</div>" +
     (st.id !== "standaard" ? "<button class='btn text danger wide' data-a='sdel'>" + esc(st.name) + " verwijderen</button>" : "")};
 };
 PAGES.instellingen = () => {
@@ -764,7 +775,7 @@ PAGES.product = () => {
 /* ---------- tekenen ---------- */
 function buildTabs(){ $("tabs").innerHTML = TABS.map(t => "<button data-a='nav' data-k='" + t[0] + "'><span class='tp'>" + ico(t[2]) + "</span><span>" + t[1] + "</span></button>").join(""); }
 function render(force){
-  if (!ready || !route) return;
+  if (!ready || !route || dragLock) return;
   const isList = route === "lijst";
   $("pgList").hidden = !isList; $("listHead").hidden = !isList; $("page").hidden = isList;
   let P;
@@ -846,7 +857,6 @@ const ACT = {
   },
   trip:k => { let ids = tripIds(); if (ids.includes(k)) { if (ids.length > 1) ids = ids.filter(i => i !== k); } else ids.push(k); setTrip(ids); },
   sadd:() => { const inp = $("sName"), name = inp.value.trim(); if (!name) return inp.focus(); const id = keyOf(name); inp.value = ""; inp.blur(); DB.set("stores", id, {name, order:order()}); setTrip(tripIds().filter(i => i !== id).concat(id)); },
-  smove:(k, t) => { const st = storeList().find(s => s.id === args.looproute); if (!st) return; const o = order(st), i = +k, j = i + (+t.dataset.d); args.moved = o[i]; [o[i], o[j]] = [o[j], o[i]]; DB.set("stores", st.id, {name:st.name, order:o}); },
   sdel:() => { const id = args.looproute; back(); DB.del("stores", id); setTrip(trip.filter(i => i !== id)); },
   staple:k => {
     const p = product(k); if (!p) return;
@@ -888,6 +898,60 @@ $("q").addEventListener("focus", renderSug);
 $("q").addEventListener("blur", () => setTimeout(renderSug, 180));
 $("sug").addEventListener("pointerdown", e => e.preventDefault());
 addEventListener("hashchange", onRoute);
+
+/* ---------- slepen in de looproute ---------- */
+let drag = null, dragLock = false;
+document.addEventListener("pointerdown", e => {
+  const g = e.target.closest(".grip"); if (!g || drag || dragLock || e.button > 0) return;
+  e.preventDefault();
+  const el = g.closest(".cell"), box = el.parentElement, items = [...box.children], from = items.indexOf(el);
+  drag = {el, box, items, from, to:from, id:e.pointerId, cy:e.clientY, y0:e.clientY + window.scrollY, h:el.offsetHeight,
+    mids:items.map(i => i.offsetTop + i.offsetHeight / 2), min:-el.offsetTop, max:box.scrollHeight - el.offsetTop - el.offsetHeight};
+  dragLock = true;
+  try { g.setPointerCapture(e.pointerId); } catch {}
+  box.classList.add("sorting"); el.classList.add("drag");
+  try { navigator.vibrate && navigator.vibrate(6); } catch {}
+  drag.raf = requestAnimationFrame(autoScroll);
+});
+function moveDrag(){
+  const d = drag, dy = Math.max(d.min, Math.min(d.max, d.cy + window.scrollY - d.y0)), c = d.mids[d.from] + dy;
+  let to = d.from;
+  d.mids.forEach((m, i) => { if (i < d.from && c < m && i < to) to = i; if (i > d.from && c > m && i > to) to = i; });
+  d.to = to;
+  d.el.style.transform = "translateY(" + dy + "px)";
+  d.items.forEach((it, i) => {
+    if (it === d.el) return;
+    const s = i > d.from && i <= to ? -d.h : i < d.from && i >= to ? d.h : 0;
+    it.style.transform = s ? "translateY(" + s + "px)" : "";
+  });
+}
+function autoScroll(){
+  if (!drag) return;
+  const y = drag.cy, edge = 80, top = $("top").getBoundingClientRect().bottom, bottom = window.innerHeight - document.querySelector(".tabs").offsetHeight;
+  const v = y < top + edge ? -Math.ceil((top + edge - y) / 5) : y > bottom - edge ? Math.ceil((y - bottom + edge) / 5) : 0;
+  if (v) { window.scrollBy(0, Math.max(-18, Math.min(18, v))); moveDrag(); }
+  drag.raf = requestAnimationFrame(autoScroll);
+}
+function endDrag(e){
+  const d = drag; if (!d || (e && e.pointerId !== d.id)) return;
+  drag = null; cancelAnimationFrame(d.raf);
+  let off = 0;
+  if (d.to > d.from) for (let i = d.from + 1; i <= d.to; i++) off += d.items[i].offsetHeight;
+  else for (let i = d.to; i < d.from; i++) off -= d.items[i].offsetHeight;
+  d.el.classList.add("drop"); d.el.style.transform = "translateY(" + off + "px)";
+  setTimeout(() => {
+    dragLock = false;
+    const st = storeList().find(s => s.id === args.looproute);
+    if (st && d.to !== d.from) {
+      const o = order(st), [c] = o.splice(d.from, 1); o.splice(d.to, 0, c);
+      DB.set("stores", st.id, {name:st.name, order:o});
+    }
+    render(true);
+  }, 190);
+}
+document.addEventListener("pointermove", e => { if (drag && e.pointerId === drag.id) { drag.cy = e.clientY; moveDrag(); } });
+document.addEventListener("pointerup", endDrag);
+document.addEventListener("pointercancel", endDrag);
 addEventListener("scroll", () => $("top").classList.toggle("scrolled", window.scrollY > 2), {passive:true});
 const net = () => { $("off").hidden = navigator.onLine !== false; };
 addEventListener("online", net); addEventListener("offline", net); net();
