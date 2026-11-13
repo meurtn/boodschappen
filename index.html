@@ -176,6 +176,10 @@ button.chip:active{transform:scale(.96)}
 .sw i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .2s var(--ease)}
 .sw.on{background:var(--acc)}
 .sw.on i{transform:translateX(18px)}
+.numhit{width:44px;height:44px;display:grid;place-items:center;flex:none;margin:-6px 0}
+.numhit:active .num{transform:scale(.88)}
+.navrow{display:flex;align-items:center;gap:8px;align-self:stretch;min-height:34px}
+.navrow .i{width:18px;height:18px;color:var(--faint)}
 .num{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--faint);display:grid;place-items:center;font-size:13px;font-weight:600;flex:none;transition:background-color .18s,border-color .18s}
 .num.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
 .hero{padding:10px 0 20px}
@@ -744,18 +748,19 @@ PAGES.meer = () => {
 PAGES.winkels = () => {
   const ts = tripStores();
   return {title:"Winkels", html:
-    "<p class='lead'>Tik de winkels aan in de volgorde waarin je ze vandaag bezoekt. De lijst krijgt per winkel een eigen blok, in de looproute van die winkel.</p><div class='group'>" +
-    storeList().map(s => { const i = ts.findIndex(t => t.id === s.id), a = " data-k='" + esc(s.id) + "'"; return "<div class='cell'><button class='num" + (i >= 0 ? " on" : "") + "' data-a='trip'" + a + " aria-label='In route van vandaag'>" + (i >= 0 ? i + 1 : "") + "</button><button class='grow' data-a='trip'" + a + ">" + esc(s.name) + "</button><button class='tb' data-a='nav' data-k='looproute' data-arg='" + esc(s.id) + "'>Looproute" + ico("chevR") + "</button></div>"; }).join("") + "</div>" +
+    "<p class='lead'>Tik de rondjes aan in de volgorde waarin je de winkels vandaag bezoekt. Tik op een winkel om de naam, de looproute of de winkel zelf te beheren.</p><div class='group'>" +
+    storeList().map(s => { const i = ts.findIndex(t => t.id === s.id), a = " data-k='" + esc(s.id) + "'"; return "<div class='cell' style='padding-left:4px'><button class='numhit' data-a='trip'" + a + " aria-label='" + (i >= 0 ? "Uit" : "In") + " route van vandaag'><span class='num" + (i >= 0 ? " on" : "") + "'>" + (i >= 0 ? i + 1 : "") + "</span></button><button class='grow navrow' data-a='nav' data-k='looproute' data-arg='" + esc(s.id) + "'><span class='grow'>" + esc(s.name) + "</span>" + ico("chevR") + "</button></div>"; }).join("") + "</div>" +
     "<h3 class='ch'>Winkel toevoegen</h3><div class='line'><input class='field' id='sName' placeholder='bv. Lidl' enterkeyhint='done' data-enter='sadd'><button class='btn' data-a='sadd'>Toevoegen</button></div>" +
     "<p class='hint'>Producten zonder vaste winkel staan bij de eerste winkel van je route. Een vaste winkel kies je bij het product zelf.</p>"};
 };
 PAGES.looproute = () => {
   const st = storeList().find(s => s.id === args.looproute); if (!st) return gone();
   const ord = order(st), mv = args.moved; args.moved = null;
-  return {title:"Looproute " + st.name, html:
-    "<p class='lead'>Sleep de schappen aan het greepje rechts in de volgorde waarin je door de winkel loopt.</p><div class='group' id='sortList'>" +
+  return {title:st.name, html:
+    "<div class='group'><label class='cell'><span class='lbl'>Naam</span><input class='inl grow' id='stoName' data-k='" + esc(st.id) + "' value='" + esc(st.name) + "' enterkeyhint='done'></label></div>" +
+    "<h3 class='ch'>Looproute</h3><p class='lead' style='margin-top:0'>Sleep de schappen aan het greepje rechts in de volgorde waarin je door de winkel loopt.</p><div class='group' id='sortList'>" +
     ord.map(c => "<div class='cell" + (mv === c ? " flash" : "") + "'><span class='em'>" + CAT[c].ico + "</span><span class='grow'>" + esc(CAT[c].name) + "</span><span class='grip' aria-hidden='true'>" + ico("grip") + "</span></div>").join("") + "</div>" +
-    (st.id !== "standaard" ? "<button class='btn text danger wide' data-a='sdel'>" + esc(st.name) + " verwijderen</button>" : "")};
+    (st.id !== "standaard" ? "<button class='btn text danger wide' data-a='sdel'>Winkel verwijderen</button>" : "<p class='hint'>De standaardwinkel kun je hernoemen, maar niet verwijderen.</p>")};
 };
 PAGES.instellingen = () => {
   const t = pref.get("theme", "auto");
@@ -921,7 +926,11 @@ const ACT = {
   },
   trip:k => { let ids = tripIds(); if (ids.includes(k)) { if (ids.length > 1) ids = ids.filter(i => i !== k); } else ids.push(k); setTrip(ids); },
   sadd:() => { const inp = $("sName"), name = inp.value.trim(); if (!name) return inp.focus(); const id = keyOf(name); inp.value = ""; inp.blur(); DB.set("stores", id, {name, order:order()}); setTrip(tripIds().filter(i => i !== id).concat(id)); },
-  sdel:() => { const id = args.looproute; back(); DB.del("stores", id); setTrip(trip.filter(i => i !== id)); },
+  sdel:() => {
+    const id = args.looproute, old = S.stores[id], oldTrip = trip.slice(); if (!old) return;
+    back(); DB.del("stores", id); setTrip(trip.filter(i => i !== id));
+    toast(old.name + " verwijderd", "Ongedaan maken", () => { DB.set("stores", id, old); setTrip(oldTrip); });
+  },
   staple:k => {
     const p = product(k); if (!p) return;
     if (args.stEdit) return DB.set("products", k, {name:p.name, cat:p.cat, staple:false});
@@ -942,6 +951,7 @@ document.addEventListener("click", e => {
 document.addEventListener("change", e => {
   const t = e.target, k = t.dataset.k;
   if (t.id === "noteIn") DB.set("items", k, {note:t.value.trim()});
+  else if (t.id === "stoName") { const n = t.value.trim(), st = storeList().find(s => s.id === k); if (n && st) DB.set("stores", k, {name:n, order:order(st)}); else render(true); }
   else if (t.id === "tplName") { const n = t.value.trim(); if (n && S.templates[k]) DB.set("templates", k, {name:n}); else render(true); }
   else if (t.id === "amtIn") { const n = parseFloat(t.value.replace(",", ".")); t.blur(); if (n > 0) DB.set("items", k, {qty:Math.round(n * 100) / 100}); else render(true); }
   else if (t.id === "catSel") { t.blur(); ACT.setcat(k, t.value); }
@@ -950,7 +960,7 @@ document.addEventListener("change", e => {
 document.addEventListener("keydown", e => {
   const t = e.target; if (e.key !== "Enter" || !t.dataset) return;
   if (t.dataset.enter) { e.preventDefault(); ACT[t.dataset.enter](); }
-  else if (t.id === "amtIn" || t.id === "noteIn" || t.id === "tplName") t.blur();
+  else if (t.id === "amtIn" || t.id === "noteIn" || t.id === "tplName" || t.id === "stoName") t.blur();
 });
 document.addEventListener("focusout", e => { if ($("page").contains(e.target)) setTimeout(() => { if (route !== "lijst") render(); }, 0); });
 $("addForm").addEventListener("submit", e => {
