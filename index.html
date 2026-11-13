@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lijstjes</title>
+<meta name="theme-color" content="#f6f4ee" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141a17" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lijstjes">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+:root{
+  --bg:#f6f4ee;--card:#fff;--ink:#1f2a24;--mute:#6f7a73;--line:#e7e3d9;
+  --acc:#2f7d5b;--acc-ink:#fff;--soft:#e3f1ea;--warm:#e8833a;--danger:#c4472f;
+  --shadow:0 1px 2px rgba(31,42,36,.06),0 6px 20px rgba(31,42,36,.06);
+  --round:ui-rounded,"SF Pro Rounded","Nunito","Segoe UI",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#141a17;--card:#1d2521;--ink:#e9efe9;--mute:#93a099;--line:#2b3530;
+  --acc:#5cc296;--acc-ink:#0f1512;--soft:#22352c;--warm:#f0a064;--danger:#ef7a62;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 6px 20px rgba(0,0,0,.25);
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{min-height:100vh;padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+.wrap{max-width:560px;margin:0 auto;padding:0 14px}
+[hidden]{display:none!important}
+
+/* kop */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:calc(10px + env(safe-area-inset-top))}
+.head{display:flex;align-items:center;gap:10px}
+.head h1{font:800 26px/1.1 var(--round);margin:0;letter-spacing:-.3px}
+.sub{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:13.5px;margin-top:2px}
+.sub button{color:var(--acc);font-weight:600}
+.grow{flex:1;min-width:0}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--soft);color:var(--acc);font:700 16px var(--round);display:grid;place-items:center;flex:none}
+.bar{height:5px;border-radius:9px;background:var(--line);overflow:hidden;margin:10px 0 0}
+.bar i{display:block;height:100%;width:0;background:var(--acc);border-radius:9px;transition:width .35s ease}
+
+.add{display:flex;gap:8px;margin-top:10px}
+.add input{flex:1;min-width:0;height:50px;border-radius:16px;border:1.5px solid var(--line);background:var(--card);padding:0 16px;outline:0;box-shadow:var(--shadow)}
+.add input:focus{border-color:var(--acc)}
+.add button{width:50px;height:50px;border-radius:16px;background:var(--acc);color:var(--acc-ink);font-size:28px;line-height:1;flex:none;box-shadow:var(--shadow)}
+.sug{background:var(--card);border-radius:16px;box-shadow:var(--shadow);margin-top:8px;max-height:46vh;overflow:auto;border:1px solid var(--line)}
+.sug .s{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)}
+.sug .s:last-child{border-bottom:0}
+.sug .s.enter{background:var(--soft)}
+.sug .s b{font-weight:600}
+.sug .s small{margin-left:auto;color:var(--mute);white-space:nowrap;font-size:13px}
+.sug .s small.inc{color:var(--acc);font-weight:700}
+.sug h4{margin:0;padding:10px 14px 0;font:700 12px var(--round);letter-spacing:.6px;text-transform:uppercase;color:var(--mute)}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px 14px}
+.chip{padding:8px 13px;border-radius:99px;background:var(--soft);color:var(--acc);font-weight:600;font-size:14.5px}
+.tools{display:flex;gap:8px;overflow-x:auto;padding:10px 0 10px;scrollbar-width:none}
+.tools::-webkit-scrollbar{display:none}
+.tool{flex:none;padding:8px 13px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-weight:600;font-size:14px}
+.note-bar{font-size:13px;color:var(--mute);background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:8px 12px;margin:0 0 10px}
+
+/* lijst */
+.cat{margin:14px 0 0}
+.cat h3{display:flex;align-items:center;gap:8px;margin:0 4px 6px;font:700 13px var(--round);letter-spacing:.5px;text-transform:uppercase;color:var(--mute)}
+.cat h3 span{margin-left:auto;font-weight:600}
+.cat h3 button{color:var(--acc);font:600 13px system-ui;text-transform:none;letter-spacing:0}
+.card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-bottom:1px solid var(--line);min-height:56px;cursor:pointer;user-select:none;-webkit-user-select:none}
+.row:last-child{border-bottom:0}
+.tick{width:26px;height:26px;border-radius:50%;border:2px solid var(--mute);flex:none;display:grid;place-items:center;color:transparent;font-size:15px;font-weight:800;transition:.15s}
+.row.done .tick{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.row .nm{font-weight:600;overflow-wrap:anywhere}
+.row .nt{font-size:13px;color:var(--mute)}
+.row.done .nm{text-decoration:line-through;color:var(--mute);font-weight:500}
+.step{display:flex;align-items:center;background:var(--bg);border-radius:12px;flex:none}
+.step button{width:34px;height:36px;font-size:20px;color:var(--acc);font-weight:700}
+.step b{min-width:22px;text-align:center;font:700 16px var(--round);white-space:nowrap}
+.seg{display:flex;flex-wrap:wrap;flex:1;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:3px;gap:2px}
+.seg button{flex:1;height:36px;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--mute)}
+.seg button.on{background:var(--acc);color:var(--acc-ink)}
+.dots{width:30px;height:36px;color:var(--mute);font-size:20px;flex:none}
+.qty{font:700 15px var(--round);color:var(--warm);flex:none;padding-right:6px}
+.row.flash{animation:fl .9s ease}
+@keyframes fl{0%{background:var(--soft)}100%{background:transparent}}
+.empty{text-align:center;padding:36px 16px;color:var(--mute)}
+.empty .big{font-size:46px}
+.empty h2{font:800 20px var(--round);color:var(--ink);margin:6px 0 4px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:46px;padding:0 18px;border-radius:14px;background:var(--acc);color:var(--acc-ink);font-weight:700}
+.btn.ghost{background:var(--soft);color:var(--acc)}
+.btn.bad{background:none;color:var(--danger)}
+.btn.wide{width:100%}
+
+.shead{display:flex;align-items:center;gap:10px;margin:22px 2px 0;font:800 20px var(--round)}
+.shead b{width:28px;height:28px;border-radius:50%;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;font-size:15px}
+.shead span{margin-left:auto;font:600 13px system-ui;color:var(--mute)}
+.nx{flex:none;padding:9px 10px;border-radius:10px;background:var(--bg);color:var(--mute);font-size:13px;font-weight:600}
+body:not(.shop) .nx,body.shop .due{display:none}
+.duo{display:inline-flex;background:var(--card);border:1px solid var(--line);border-radius:99px;box-shadow:var(--shadow)}
+.duo button{padding:8px 2px 8px 13px;font-weight:600;font-size:14.5px}
+.duo button+button{padding:8px 12px 8px 8px;color:var(--mute)}
+.duo small{color:var(--mute);font-weight:500}
+.num{width:30px;height:30px;border-radius:50%;border:2px solid var(--mute);flex:none;font:700 15px var(--round)}
+.num.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.tl{text-align:left}
+.li.col{flex-direction:column;align-items:stretch;gap:8px}
+.btn.sm{height:38px;font-size:14px;padding:0 12px;border-radius:12px}
+.pits{display:flex;flex-wrap:wrap;gap:6px}
+.pit{background:var(--bg);border-radius:9px;padding:4px 8px;font-size:13.5px}
+.pit button{margin-left:6px;color:var(--danger);font-weight:700}
+.chip.on{background:var(--acc);color:var(--acc-ink)}
+/* winkelmodus */
+body.shop .add,body.shop .tools,body.shop .step,body.shop .dots,body.shop .sug,body.shop .note-bar{display:none}
+body.shop .row{min-height:64px;font-size:18px}
+body.shop .tick{width:32px;height:32px}
+body:not(.shop) .qty.shoponly,body:not(.shop) .shopbar{display:none}
+.shopbar{position:fixed;left:0;right:0;bottom:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 30%);z-index:6}
+.shopbar .btn{max-width:532px;margin:0 auto;display:flex}
+
+/* sheets */
+.veil{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.veil.anim{animation:fade .2s}
+.veil.anim .sheet{animation:up .25s ease}
+@keyframes fade{from{opacity:0}}
+.sheet{width:100%;max-width:560px;max-height:88vh;overflow:auto;background:var(--bg);border-radius:24px 24px 0 0;padding:8px 16px calc(20px + env(safe-area-inset-bottom))}
+@keyframes up{from{transform:translateY(40px);opacity:.5}}
+.grab{width:40px;height:5px;border-radius:9px;background:var(--line);margin:4px auto 10px}
+.sheet h2{font:800 21px var(--round);margin:0 0 4px}
+.sheet p{color:var(--mute);margin:0 0 12px;font-size:14px}
+.sheet h4{font:700 12px var(--round);letter-spacing:.6px;text-transform:uppercase;color:var(--mute);margin:18px 0 8px}
+.field{width:100%;height:46px;border-radius:14px;border:1.5px solid var(--line);background:var(--card);padding:0 14px;outline:0}
+.field:focus{border-color:var(--acc)}
+.line{display:flex;gap:8px;align-items:center}
+.bigstep{display:flex;align-items:center;justify-content:center;gap:18px;margin:10px 0}
+.bigstep button{width:54px;height:54px;border-radius:50%;background:var(--soft);color:var(--acc);font-size:28px;font-weight:700}
+.bigstep b{font:800 34px var(--round);min-width:56px;text-align:center;white-space:nowrap}
+.catgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.catgrid button{display:flex;gap:8px;align-items:center;text-align:left;padding:10px 12px;border-radius:14px;background:var(--card);border:1.5px solid var(--line);font-size:14px;font-weight:600}
+.catgrid button.on{border-color:var(--acc);background:var(--soft)}
+.li{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:10px 12px;margin-bottom:8px;box-shadow:var(--shadow)}
+.li .t{font-weight:700}
+.li .d{font-size:13px;color:var(--mute);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.li .mv{width:38px;height:38px;border-radius:12px;background:var(--bg);color:var(--acc);font-size:15px;flex:none}
+.li .mv:disabled{opacity:.25}
+.check{display:flex;align-items:center;gap:8px;font-size:14px;margin:10px 0}
+.check input{width:20px;height:20px;accent-color:var(--acc)}
+
+/* toast en poort */
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 16px;border-radius:14px;display:flex;gap:14px;align-items:center;z-index:30;width:max-content;max-width:92vw;font-size:14.5px;box-shadow:var(--shadow);animation:up .2s}
+.toast button{color:var(--warm);font-weight:800;white-space:nowrap}
+body.shop .toast{bottom:calc(88px + env(safe-area-inset-bottom))}
+.gate{position:fixed;inset:0;z-index:40;background:var(--bg);display:grid;place-items:center;padding:24px;text-align:center}
+.gate .logo{width:92px;height:92px;border-radius:26px;background:var(--acc);color:#fff;font-size:50px;display:grid;place-items:center;margin:0 auto 18px;box-shadow:var(--shadow)}
+.gate h1{font:800 30px var(--round);margin:0 0 6px}
+.gate p{color:var(--mute);max-width:320px;margin:0 auto 22px}
+.off{font-size:12.5px;color:var(--warm);font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="gate" id="gate">
+  <div>
+    <div class="logo">✓</div>
+    <h1>Lijstjes</h1>
+    <p id="gateMsg">Even laden...</p>
+    <button class="btn" id="gateBtn" hidden></button>
+    <div style="margin-top:10px"><button class="btn bad" id="gateOut" hidden>Uitloggen</button></div>
+  </div>
+</div>
+
+<div class="top"><div class="wrap">
+  <div class="head">
+    <div class="grow">
+      <h1>Boodschappen</h1>
+      <div class="sub"><span id="count"></span><span>·</span><button data-a="stores" id="storeBtn"></button><span class="off" id="off" hidden>· offline</span></div>
+    </div>
+    <button class="avatar" data-a="account" id="avatar" aria-label="Account">?</button>
+  </div>
+  <div class="bar"><i id="prog"></i></div>
+  <form class="add" id="addForm" autocomplete="off">
+    <input id="q" type="text" inputmode="text" enterkeyhint="done" autocapitalize="sentences" placeholder="Voeg toe, bv. 2 paprika of 500 g gehakt" aria-label="Product toevoegen">
+    <button type="submit" aria-label="Toevoegen">+</button>
+  </form>
+  <div class="sug" id="sug" hidden></div>
+  <div class="tools">
+    <button class="tool" data-a="shop">🛒 Winkelmodus</button>
+    <button class="tool" data-a="staples">🏠 Bijna op</button>
+    <button class="tool" data-a="templates">📋 Templates</button>
+    <button class="tool" data-a="history">🕘 Vorige lijsten</button>
+    <button class="tool" data-a="stores">🧭 Winkels</button>
+    <button class="tool" data-a="share">📤 Deel als tekst</button>
+  </div>
+</div></div>
+
+<div class="wrap">
+  <div class="note-bar" id="demo" hidden>Demomodus: de lijst staat alleen op dit apparaat. Vul firebase-config.js in om te delen met je gezin.</div>
+  <div id="list"></div>
+</div>
+
+<div class="shopbar"><button class="btn wide" data-a="shop">Klaar met winkelen</button></div>
+<div id="sheetHost"></div>
+<div id="toastHost"></div>
+
+<script src="firebase-config.js"></script>
+<script>
+"use strict";
+/* ---------- categorieen en productcatalogus ---------- */
+const CATS = [
+ ["groente","🥦","Groente & fruit"],["brood","🥖","Brood & bakkerij"],["vlees","🥩","Vlees, vis & vega"],
+ ["kaas","🧀","Kaas & vleeswaren"],["zuivel","🥛","Zuivel & eieren"],["maaltijd","🥗","Verse maaltijden"],
+ ["pasta","🍝","Pasta, rijst & wereldkeuken"],["conserven","🥫","Conserven, soep & saus"],["ontbijt","🥣","Ontbijt & beleg"],
+ ["bakken","🧂","Bakken & kruiden"],["snoep","🍪","Koek, snoep & chips"],["dranken","🧃","Frisdrank, sap & water"],
+ ["koffie","☕","Koffie & thee"],["alcohol","🍷","Bier & wijn"],["diepvries","🧊","Diepvries"],
+ ["verzorging","🧴","Drogisterij"],["huishouden","🧽","Huishouden"],["baby","🍼","Baby & kind"],
+ ["dieren","🐾","Huisdieren"],["overig","🛒","Overig"]];
+const CAT = Object.fromEntries(CATS.map(c => [c[0], {id:c[0], ico:c[1], name:c[2]}]));
+const DEFAULT_ORDER = CATS.map(c => c[0]);
+const CATALOG_SRC = {
+ groente:"Appels,Bananen,Peren,Sinaasappels,Mandarijnen,Citroen,Limoen,Druiven,Aardbeien,Blauwe bessen,Frambozen,Kiwi,Mango,Ananas,Meloen,Avocado,Tomaten,Cherrytomaten,Komkommer,Paprika,Courgette,Aubergine,Broccoli,Bloemkool,Spinazie,Sla,Rucola,Wortels,Ui,Rode ui,Knoflook,Prei,Champignons,Aardappelen,Zoete aardappel,Sperziebonen,Spruitjes,Boerenkool,Witlof,Bosui,Gember,Rode peper,Verse basilicum,Verse peterselie,Koriander,Mais,Pompoen,Venkel,Radijs,Bleekselderij,Rode kool,Witte kool,Paksoi,Taugé,Snoeptomaatjes",
+ brood:"Brood,Volkorenbrood,Wit brood,Bruin brood,Krentenbollen,Croissants,Afbakbroodjes,Pistoletjes,Stokbrood,Tortilla wraps,Pitabroodjes,Beschuit,Crackers,Knäckebröd,Roggebrood,Ontbijtkoek,Bolletjes,Naanbrood",
+ vlees:"Kipfilet,Kippendijen,Gehakt,Rundergehakt,Half-om-half gehakt,Hamburgers,Biefstuk,Spekjes,Rookworst,Braadworst,Speklappen,Schnitzel,Shoarma,Kipdrumsticks,Zalm,Kabeljauw,Garnalen,Vissticks,Tonijn,Vegetarische burger,Vegetarisch gehakt,Tofu,Tempeh,Falafel,Kipschnitzel,Gerookte zalm",
+ kaas:"Kaas,Jonge kaas,Belegen kaas,Oude kaas,Geraspte kaas,Mozzarella,Feta,Parmezaanse kaas,Roomkaas,Brie,Geitenkaas,Smeerkaas,Ham,Kipfilet beleg,Salami,Filet americain,Rookvlees,Hummus,Eiersalade,Leverworst",
+ zuivel:"Melk,Halfvolle melk,Volle melk,Karnemelk,Havermelk,Sojamelk,Yoghurt,Griekse yoghurt,Kwark,Vla,Boter,Margarine,Roomboter,Slagroom,Kookroom,Crème fraîche,Eieren,Drinkyoghurt,Chocolademelk,Toetjes",
+ maaltijd:"Verse pizza,Verse soep,Maaltijdsalade,Verse pasta,Stamppot,Gesneden groente,Wokgroente,Roerbakmix,Verse tortellini,Kant-en-klaar maaltijd,Aardappelschijfjes,Verse saus",
+ pasta:"Pasta,Spaghetti,Penne,Macaroni,Lasagnebladen,Rijst,Basmatirijst,Zilvervliesrijst,Couscous,Noedels,Mie,Bulgur,Quinoa,Sojasaus,Ketjap,Sambal,Kokosmelk,Currypasta,Taco schelpen,Wokolie,Kroepoek,Risottorijst",
+ conserven:"Tomatenblokjes,Gepelde tomaten,Tomatenpuree,Passata,Pastasaus,Pesto,Kidneybonen,Kikkererwten,Witte bonen,Linzen,Mais in blik,Doperwten,Tonijn in blik,Soep in blik,Bouillonblokjes,Mayonaise,Ketchup,Mosterd,Curry,Olijven,Augurken,Zilveruitjes,Appelmoes,Olijfolie,Zonnebloemolie,Azijn,Balsamico,Satésaus,Knoflooksaus",
+ ontbijt:"Hagelslag,Pindakaas,Jam,Chocoladepasta,Honing,Appelstroop,Muesli,Cruesli,Havermout,Cornflakes,Granola,Vlokken,Speculoospasta,Rijstwafels",
+ bakken:"Bloem,Suiker,Basterdsuiker,Poedersuiker,Bakpoeder,Gist,Vanillesuiker,Pannenkoekenmix,Zout,Peper,Paprikapoeder,Kerriepoeder,Kaneel,Komijn,Oregano,Italiaanse kruiden,Nootmuskaat,Maizena,Paneermeel,Cacao,Rozijnen,Noten,Amandelen,Walnoten,Pijnboompitten",
+ snoep:"Chips,Paprikachips,Naturel chips,Nootjes,Pinda's,Borrelnootjes,Chocolade,Pure chocolade,Koekjes,Stroopwafels,Speculaas,Drop,Winegums,Kauwgom,Popcorn,Mueslirepen,Liga,Toastjes,Zoute stokjes,Pepernoten,Chocoladeletter",
+ dranken:"Cola,Cola zero,Sinas,Spa rood,Spa blauw,Water,Bruiswater,Appelsap,Sinaasappelsap,Limonadesiroop,IJsthee,Tonic,Energiedrank,Multivitaminesap,Kokoswater",
+ koffie:"Koffie,Koffiebonen,Koffiepads,Koffiecups,Filterkoffie,Thee,Groene thee,Rooibosthee,Muntthee,Koffiemelk,Koffiefilters,Oploskoffie",
+ alcohol:"Bier,Alcoholvrij bier,Speciaalbier,Rode wijn,Witte wijn,Rosé,Prosecco,Radler",
+ diepvries:"Diepvriespizza,Friet,IJs,Roomijs,Waterijsjes,Diepvriesspinazie,Diepvrieserwten,Diepvriesgroente,Kroketten,Frikandellen,Bitterballen,Kipnuggets,Diepvriesfruit,Diepvriesvis,Loempia's,Kaassoufflés,IJsblokjes",
+ verzorging:"Tandpasta,Tandenborstel,Shampoo,Conditioner,Douchegel,Deodorant,Handzeep,Zeep,Scheermesjes,Scheerschuim,Wattenstaafjes,Wattenschijfjes,Maandverband,Tampons,Paracetamol,Pleisters,Zonnebrand,Bodylotion,Zakdoekjes,Mondwater,Flosdraad,Dagcrème,Lippenbalsem",
+ huishouden:"Wc-papier,Keukenrol,Afwasmiddel,Vaatwastabletten,Wasmiddel,Wasverzachter,Allesreiniger,Wc-reiniger,Schuursponsjes,Vuilniszakken,Aluminiumfolie,Bakpapier,Vershoudfolie,Diepvrieszakjes,Boterhamzakjes,Batterijen,Kaarsen,Waxinelichtjes,Glasreiniger,Vaatdoekjes,Servetten,Lucifers,Spoelglans,Vaatwaszout,Ontkalker",
+ baby:"Luiers,Billendoekjes,Babyvoeding,Fruithapjes,Opvolgmelk,Knijpfruit,Babyshampoo",
+ dieren:"Kattenvoer,Hondenvoer,Kattenbakvulling,Hondensnacks,Kattensnoepjes,Vogelvoer",
+ overig:"Bloemen,Cadeaupapier,Postzegels,Kaart,Tijdschrift,Statiegeld inleveren"
+};
+const GUESS = {
+ groente:["appel","peer","bes","fruit","groente","sla","kool","tomaat","boon","bonen","ui","kruid vers","paddenstoel","biet","wortel","banaan","aardbei"],
+ brood:["brood","bol","broodje","cake","taart","gebak","wrap","bagel","toast"],
+ vlees:["kip","vlees","worst","gehakt","burger","vis","zalm","filet","spek","vega","lams","rund","varken","schnitzel","garnaal"],
+ kaas:["kaas","ham","salami","beleg","salade","paté","worstje"],
+ zuivel:["melk","yoghurt","kwark","vla","room","boter","ei","skyr","zuivel"],
+ maaltijd:["maaltijd","kant-en-klaar","vers "],
+ pasta:["pasta","rijst","noedel","mie","saus oosters","taco","curry","nasi","bami"],
+ conserven:["blik","saus","soep","olie","azijn","bouillon","pot ","mayo"],
+ ontbijt:["muesli","havermout","pasta zoet","jam","stroop","hagel","pindakaas","ontbijt"],
+ bakken:["bloem","suiker","kruid","poeder","meel","bak","noot","noten","zaad","pit"],
+ snoep:["chips","koek","snoep","chocola","drop","reep","nootjes","wafel","zoutje"],
+ dranken:["sap","cola","fris","water","limonade","drank","siroop","sinas"],
+ koffie:["koffie","thee","cappuccino","espresso"],
+ alcohol:["bier","wijn","rosé","whisky","gin","rum","wodka","likeur","pils"],
+ diepvries:["diepvries","ijs","friet","bevroren","kroket"],
+ verzorging:["shampoo","zeep","tand","crème","creme","deo","scheer","pleister","pijnstiller","vitamine","lotion","gel","make-up","watten"],
+ huishouden:["papier","reiniger","wasmiddel","afwas","zak","folie","spons","doek","batterij","lamp","kaars","schoonmaak","tablet"],
+ baby:["luier","baby","fles","speen"],
+ dieren:["kat","hond","voer","dier","konijn","vogel"]
+};
+
+/* ---------- hulpjes ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const keyOf = s => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[\/\\.#$\[\]]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+const cap = s => { s = String(s).trim().replace(/\s+/g, " "); return s.charAt(0).toUpperCase() + s.slice(1); };
+const stepOf = u => (u === "g" || u === "ml") ? 100 : (u === "kg" || u === "l") ? 0.5 : 1;
+const defQty = u => (u === "g" || u === "ml") ? 500 : 1;
+const fmt = n => String(Math.round(n * 100) / 100).replace(".", ",");
+const amount = it => it.unit ? fmt(it.qty || 1) + " " + it.unit : String(it.qty || 1);
+const badge = it => it.unit ? amount(it) : ((it.qty || 1) > 1 ? it.qty + "×" : "");
+const FAM = {g:["w", 1], kg:["w", 1000], ml:["v", 1], l:["v", 1000]};
+function convert(q, from, to){ if (from === to) return q; const a = FAM[from], b = FAM[to]; return a && b && a[0] === b[0] ? q * a[1] / b[1] : null; }
+const UNIT_LABEL = [["", "Stuks"], ["g", "Gram"], ["kg", "Kilo"], ["ml", "Milliliter"], ["l", "Liter"]];
+const mem = {};
+const pref = {
+  get(k, d){ try { const v = localStorage.getItem("lijstjes." + k); return v === null ? (mem[k] ?? d) : v; } catch { return mem[k] ?? d; } },
+  set(k, v){ mem[k] = v; try { localStorage.setItem("lijstjes." + k, v); } catch {} }
+};
+
+const CATALOG = {};
+for (const [cat, list] of Object.entries(CATALOG_SRC)) for (const name of list.split(",")) CATALOG[keyOf(name)] = {name, cat};
+
+/* ---------- toestand ---------- */
+const LIST = "boodschappen";
+const PATH = {items:"lists/" + LIST + "/items", products:"products", stores:"stores", templates:"templates", history:"history"};
+const S = {items:{}, products:{}, stores:{}, templates:{}, history:{}};
+let DB = null, user = null, ready = false, sheet = null, flashKey = null, wake = null;
+let trip = []; try { trip = JSON.parse(pref.get("trip", "[]")) || []; } catch {}
+const DAY = 864e5;
+
+const me = () => user ? (user.displayName || user.email || "Iemand").split(" ")[0] : "Ik";
+const product = k => { const c = CATALOG[k], p = S.products[k]; return (c || (p && p.name)) ? {k, name:(p && p.name) || c.name, cat:(p && p.cat) || (c && c.cat) || "overig", n:(p && p.n) || 0, unit:(p && p.unit) || "", dq:(p && p.dq) || 0, buys:(p && p.buys) || [], staple:!!(p && p.staple), store:(p && p.store) || "", snooze:(p && p.snooze) || 0, custom:!c} : null; };
+const allProducts = () => { const ks = new Set([...Object.keys(CATALOG), ...Object.keys(S.products)]); return [...ks].map(product).filter(Boolean); };
+const onList = k => S.items[k] && !S.items[k].checked;
+function guessCat(name){ const k = " " + keyOf(name) + " "; for (const [c, words] of Object.entries(GUESS)) if (words.some(w => k.includes(w))) return c; return "overig"; }
+function storeList(){ const o = {standaard:{name:"Standaard"}, ...S.stores}; return Object.entries(o).map(([id, s]) => ({id, name:s.name || id, order:s.order})).sort((a, b) => a.id === "standaard" ? -1 : b.id === "standaard" ? 1 : a.name.localeCompare(b.name)); }
+// De route van vandaag: de winkels in de volgorde waarin je ze bezoekt (per apparaat onthouden).
+function tripStores(){ const all = storeList(), t = trip.map(id => all.find(s => s.id === id)).filter(Boolean); return t.length ? t : [all[0]]; }
+function setTrip(t){ trip = t; pref.set("trip", JSON.stringify(t)); render(); }
+const store = () => tripStores()[0];
+// Bij welke winkel van de route hoort dit product: vaste winkel als die in de route zit, anders de eerste.
+function storeOf(k, it, ids){ const pr = it.store || (S.products[k] && S.products[k].store) || ""; return ids.includes(pr) ? pr : ids[0]; }
+// Koopritme: mediaan van de tussenpozen tussen de laatste aankopen.
+function rhythm(p){
+  const b = p.buys; if (!b || b.length < 3) return null;
+  const g = []; for (let i = 1; i < b.length; i++) g.push(b[i] - b[i - 1]); g.sort((x, y) => x - y);
+  const days = Math.max(2, Math.round(g[Math.floor(g.length / 2)] / DAY)), since = (Date.now() - b[b.length - 1]) / DAY;
+  return {days, since, due:since >= days * 0.85};
+}
+function dueList(){
+  return allProducts().filter(p => { if (S.items[p.k] || p.snooze > Date.now()) return false; const r = rhythm(p); if (r && r.due) { p.r = r; return true; } return false; })
+    .sort((a, b) => b.r.since / b.r.days - a.r.since / a.r.days).slice(0, 6);
+}
+const slim = v => ({name:v.name, qty:v.qty || 1, unit:v.unit || "", cat:v.cat, note:v.note || ""});
+const dateStr = at => new Date(at).toLocaleDateString("nl-NL", {weekday:"long", day:"numeric", month:"long"});
+function order(st){ const o = ((st || store()).order || DEFAULT_ORDER).filter(c => CAT[c]); for (const c of DEFAULT_ORDER) if (!o.includes(c)) o.push(c); return o; }
+
+/* ---------- opslag: lokaal (demo) of Firebase ---------- */
+const Local = {
+  init(){
+    try { Object.assign(S, JSON.parse(localStorage.getItem("lijstjes.demo")) || {}); } catch {}
+    if (!Object.keys(S.items).length && !pref.get("seeded", "")) {
+      [["Paprika",2],["Bananen",1],["Melk",2],["Brood",1],["Kipfilet",1],["Koffie",1],["Wc-papier",1]].forEach(([n, q], i) => {
+        const k = keyOf(n); S.items[k] = {name:n, cat:CATALOG[k].cat, qty:q, note:"", checked:i === 3, by:"Ik", at:Date.now()};
+      });
+      pref.set("seeded", "1");
+    }
+    if (!pref.get("seeded2", "")) {
+      const now = Date.now(), P = (n, d) => { const k = keyOf(n); S.products[k] = {name:n, cat:CATALOG[k].cat, ...(S.products[k] || {}), ...d}; };
+      P("Eieren", {buys:[now - 22 * DAY, now - 15 * DAY, now - 8 * DAY], n:3, staple:true});
+      P("Yoghurt", {buys:[now - 16 * DAY, now - 11 * DAY, now - 6 * DAY], n:3});
+      ["Melk","Koffie","Wc-papier","Boter","Afwasmiddel","Tandpasta","Olijfolie"].forEach(n => P(n, {staple:true}));
+      P("Koffie", {store:"plus"}); P("Wc-papier", {store:"plus"});
+      S.stores.lidl = {name:"Lidl", order:["brood","groente","vlees","kaas","zuivel"]};
+      S.stores.plus = {name:"Plus", order:DEFAULT_ORDER};
+      if (!trip.length) { trip = ["lidl", "plus"]; pref.set("trip", JSON.stringify(trip)); }
+      pref.set("seeded2", "1"); this.save();
+    }
+    $("demo").hidden = false; start();
+  },
+  save(){ try { localStorage.setItem("lijstjes.demo", JSON.stringify(S)); } catch {} },
+  set(c, id, d){ S[c][id] = {...(S[c][id] || {}), ...d}; this.save(); render(); },
+  del(c, id){ delete S[c][id]; this.save(); render(); },
+  inc(c, id, f, n){ if (S[c][id]) { S[c][id][f] = (S[c][id][f] || 0) + n; this.save(); render(); } },
+  signOut(){}
+};
+const Fire = {
+  async init(cfg){
+    const v = "https://www.gstatic.com/firebasejs/10.14.1/firebase-";
+    const [A, U, F] = await Promise.all([import(v + "app.js"), import(v + "auth.js"), import(v + "firestore.js")]);
+    this.F = F; this.U = U;
+    const app = A.initializeApp(cfg);
+    try { this.db = F.initializeFirestore(app, {localCache:F.persistentLocalCache({tabManager:F.persistentMultipleTabManager()})}); }
+    catch { this.db = F.getFirestore(app); }
+    this.auth = U.getAuth(app);
+    U.onAuthStateChanged(this.auth, u => {
+      user = u; (this.unsubs || []).forEach(f => f()); this.unsubs = [];
+      if (!u) return gate("Log in met je Google-account om de gezinslijst te openen.", "Inloggen met Google", () => this.signIn());
+      gate("Lijst ophalen...");
+      let first = 0;
+      this.unsubs = Object.keys(PATH).map(c => F.onSnapshot(F.collection(this.db, PATH[c]), snap => {
+        const o = {}; snap.forEach(d => { o[d.id] = d.data(); }); S[c] = o;
+        if (!ready && ++first >= Object.keys(PATH).length) start(); else render();
+      }, err => {
+        if (err.code === "permission-denied") gate("Het account " + (u.email || "") + " heeft geen toegang tot deze lijst.", null, null, true);
+        else toast("Synchronisatie mislukt: " + err.code);
+      }));
+    });
+  },
+  signIn(){
+    const p = new this.U.GoogleAuthProvider(); p.setCustomParameters({prompt:"select_account"});
+    this.U.signInWithPopup(this.auth, p).catch(e => {
+      if (/popup-blocked|operation-not-supported/.test(e.code || "")) return this.U.signInWithRedirect(this.auth, p);
+      if (!/popup-closed|cancelled/.test(e.code || "")) gate("Inloggen lukte niet (" + (e.code || e.message) + ").", "Opnieuw proberen", () => this.signIn());
+    });
+  },
+  ref(c, id){ return this.F.doc(this.db, PATH[c], id); },
+  fail(e){ toast(e.code === "permission-denied" ? "Geen toegang" : "Opslaan mislukt: " + (e.code || e)); },
+  set(c, id, d){ this.F.setDoc(this.ref(c, id), d, {merge:true}).catch(this.fail); },
+  del(c, id){ this.F.deleteDoc(this.ref(c, id)).catch(this.fail); },
+  inc(c, id, f, n){ this.F.updateDoc(this.ref(c, id), {[f]:this.F.increment(n)}).catch(this.fail); },
+  signOut(){ ready = false; this.U.signOut(this.auth); }
+};
+function gate(msg, btn, fn, showOut){
+  $("gate").hidden = false; $("gateMsg").textContent = msg;
+  $("gateBtn").hidden = !btn; if (btn) { $("gateBtn").textContent = btn; $("gateBtn").onclick = fn; }
+  $("gateOut").hidden = !showOut; $("gateOut").onclick = () => DB.signOut();
+}
+function start(){ ready = true; $("gate").hidden = true; $("avatar").textContent = me().charAt(0).toUpperCase(); render(); }
+
+/* ---------- acties op de lijst ---------- */
+// Hoeveel erbij komt als dit product al op de lijst staat; null als de eenheden niet te combineren zijn.
+function delta(ex, a){ const eu = ex.unit || ""; return a && a.explicit ? convert(a.qty, a.unit || "", eu) : stepOf(eu); }
+function addItem(rawName, a, extra, quiet){
+  a = a || {}; extra = extra || {};
+  const k = keyOf(rawName); if (!k) return;
+  const p = product(k), ex = S.items[k];
+  const name = (p && p.name) || cap(rawName), cat = extra.cat || (p && p.cat) || guessCat(rawName);
+  if (ex && !ex.checked) {
+    const d = delta(ex, a);
+    if (d === null) { if (!quiet) toast(name + " staat er al als " + amount(ex), "Aanpassen", () => openSheet("item", k)); flashKey = k; return render(); }
+    DB.inc("items", k, "qty", d);
+    if (!quiet) toast(name + ": nu " + amount({qty:(ex.qty || 1) + d, unit:ex.unit}) + " op de lijst");
+  } else {
+    const unit = a.explicit ? (a.unit || "") : ((p && p.unit) || "");
+    const qty = a.explicit ? a.qty : ((p && p.unit && p.dq) || defQty(unit));
+    DB.set("items", k, {name, cat, qty, unit, note:extra.note || "", checked:false, by:me(), at:Date.now()});
+    if (!quiet && !p && cat === "overig") toast(name + " staat bij Overig", "Categorie kiezen", () => openSheet("item", k));
+  }
+  DB.set("products", k, {name, cat, n:((S.products[k] && S.products[k].n) || 0) + 1, last:Date.now(), ...(a.explicit && a.unit ? {unit:a.unit, dq:a.qty} : {})});
+  flashKey = k; setTimeout(render, 0);
+}
+function removeItem(k){
+  const old = S.items[k]; if (!old) return;
+  DB.del("items", k); toast(old.name + " verwijderd", "Ongedaan maken", () => DB.set("items", k, old));
+}
+function step(k, d){
+  const it = S.items[k]; if (!it) return;
+  const st = stepOf(it.unit), q = it.qty || 1;
+  if (d < 0 && q <= st) return removeItem(k);
+  DB.inc("items", k, "qty", d * st);
+}
+function toggle(k){
+  const it = S.items[k]; if (!it) return;
+  DB.set("items", k, {checked:!it.checked, checkedAt:Date.now(), checkedBy:me()});
+  if (!it.checked) { // aankoop vastleggen voor het koopritme (meerdere tikken binnen 12 uur tellen als een)
+    const b = ((S.products[k] && S.products[k].buys) || []).slice(), now = Date.now();
+    if (b.length && now - b[b.length - 1] < DAY / 2) b[b.length - 1] = now; else b.push(now);
+    DB.set("products", k, {name:it.name, cat:it.cat, buys:b.slice(-6)});
+  }
+  try { navigator.vibrate && navigator.vibrate(8); } catch {}
+}
+function clearDone(){
+  const done = Object.entries(S.items).filter(([, v]) => v.checked); if (!done.length) return;
+  // Bewaar het bezoek bij Vorige lijsten; twee keer wissen binnen 3 uur (bv. Lidl en daarna Plus) telt als een bezoek.
+  const now = Date.now(), hist = Object.entries(S.history).sort((a, b) => b[1].at - a[1].at), last = hist[0];
+  const merge = last && now - last[1].at < 3 * 36e5, hid = merge ? last[0] : String(now), prev = merge ? last[1] : null;
+  const items = (prev ? prev.items : []).filter(i => !done.some(([k]) => k === keyOf(i.name))).concat(done.map(([, v]) => slim(v)));
+  DB.set("history", hid, {at:now, by:me(), stores:tripStores().map(s => s.name).join(" + "), items});
+  hist.slice(merge ? 10 : 9).forEach(([id]) => DB.del("history", id));
+  done.forEach(([k]) => DB.del("items", k));
+  toast(done.length + " producten gewist en bewaard bij Vorige lijsten", "Ongedaan maken", () => { done.forEach(([k, v]) => DB.set("items", k, v)); if (prev) DB.set("history", hid, prev); else DB.del("history", hid); });
+}
+function setList(map){ Object.keys(S.items).forEach(k => { if (!map[k]) DB.del("items", k); }); Object.entries(map).forEach(([k, v]) => DB.set("items", k, v)); }
+// Een template of vorige lijst gebruiken: optellen bij de huidige lijst, of als nieuwe lijst klaarzetten.
+function applyPack(label, items, replace){
+  items = items || [];
+  if (!replace) {
+    items.forEach(i => addItem(i.name, {qty:i.qty || 1, unit:i.unit || "", explicit:true}, {cat:i.cat, note:i.note}, true));
+    closeSheet(); return toast(label + " toegevoegd: " + items.length + " producten");
+  }
+  const old = {...S.items}, map = {};
+  items.forEach(i => { const k = keyOf(i.name); if (k) map[k] = {name:i.name, cat:i.cat || guessCat(i.name), qty:i.qty || 1, unit:i.unit || "", note:i.note || "", checked:false, store:"", by:me(), at:Date.now()}; });
+  setList(map); closeSheet(); toast(label + " staat klaar als nieuwe lijst", "Ongedaan maken", () => setList(old));
+}
+const UNIT_ALIAS = {kg:"kg", kilo:"kg", gram:"g", gr:"g", g:"g", ml:"ml", cl:"ml", liter:"l", l:"l"};
+function parse(t){
+  t = t.trim(); let q = 1, u = "", explicit = false, m;
+  const N = "(\\d{1,4}(?:[.,]\\d{1,2})?)", U = "(kg|kilo|gram|gr|g|ml|cl|liter|l)";
+  const unit = (num, un) => { q = parseFloat(num.replace(",", ".")); un = un.toLowerCase(); u = UNIT_ALIAS[un]; if (un === "cl") q *= 10; explicit = true; };
+  if ((m = t.match(new RegExp("^" + N + "\\s*" + U + "\\.?\\s+(.+)$", "i")))) { unit(m[1], m[2]); t = m[3]; }
+  else if ((m = t.match(new RegExp("^(.+?)\\s+" + N + "\\s*" + U + "\\.?$", "i")))) { unit(m[2], m[3]); t = m[1]; }
+  else if ((m = t.match(/^(\d{1,3})\s*x?\s+(.+)$/i))) { q = +m[1]; t = m[2]; explicit = true; }
+  else if ((m = t.match(/^(.+?)\s+x?\s*(\d{1,3})\s*x?$/i))) { q = +m[2]; t = m[1]; explicit = true; }
+  if (!(q > 0)) { q = 1; explicit = false; u = ""; }
+  return {name:t, qty:q, unit:u, explicit};
+}
+
+/* ---------- suggesties ---------- */
+let sugRows = [], sugArg = null, enterIdx = -1;
+function renderSug(){
+  const box = $("sug"), inp = $("q"), val = inp.value;
+  if (document.activeElement !== inp) { box.hidden = true; return; }
+  const arg = parse(val), name = arg.name, k = keyOf(name);
+  sugArg = arg; sugRows = []; enterIdx = -1;
+  if (!k) {
+    let freq = allProducts().filter(p => p.n > 0 && !onList(p.k)).sort((a, b) => b.n - a.n).slice(0, 14);
+    if (freq.length < 8) freq = freq.concat(["Melk","Brood","Eieren","Bananen","Kaas","Tomaten","Komkommer","Yoghurt","Koffie","Wc-papier"].map(n => product(keyOf(n))).filter(p => !onList(p.k) && !freq.some(f => f.k === p.k))).slice(0, 12);
+    box.innerHTML = freq.length ? "<h4>Vaak gekocht</h4><div class='chips'>" + freq.map(p => "<button type='button' class='chip' data-a='quick' data-k='" + esc(p.k) + "'>" + esc(p.name) + "</button>").join("") + "</div>" : "";
+    box.hidden = !freq.length; return;
+  }
+  const res = [];
+  for (const p of allProducts()) {
+    let s = -1;
+    if (p.k === k) s = 100; else if (p.k.startsWith(k)) s = 60; else if (p.k.split(" ").some(w => w.startsWith(k))) s = 40; else if (k.length > 2 && p.k.includes(k)) s = 20;
+    if (s < 0) continue;
+    res.push({...p, s:s + (onList(p.k) ? 5 : 0) + Math.min(p.n, 10)});
+  }
+  res.sort((a, b) => b.s - a.s || a.name.localeCompare(b.name));
+  sugRows = res.slice(0, 6);
+  if (!(sugRows[0] && sugRows[0].s >= 100)) sugRows.push({isNew:true, k, name:cap(name), cat:guessCat(name)});
+  enterIdx = sugRows[0] && !sugRows[0].isNew && sugRows[0].s >= 60 ? 0 : sugRows.findIndex(r => r.isNew);
+  box.innerHTML = sugRows.map((r, i) => {
+    const it = onList(r.k) ? S.items[r.k] : null;
+    const d = it ? delta(it, arg) : 0;
+    const what = arg.explicit ? badge(arg) : (r.unit && r.dq ? amount({qty:r.dq, unit:r.unit}) : "");
+    const right = r.isNew ? "<small>" + (what ? esc(what) + " · " : "") + "nieuw product</small>" : it ? "<small class='inc'>staat er al: " + amount(it) + (d === null ? "" : " → " + amount({qty:(it.qty || 1) + d, unit:it.unit})) + "</small>" : "<small>" + (what ? esc(what) + " " : "") + "toevoegen</small>";
+    return "<button type='button' class='s" + (i === enterIdx ? " enter" : "") + "' data-a='pick' data-k='" + i + "'><span>" + (r.isNew ? "✨" : CAT[r.cat].ico) + "</span><b>" + esc(r.name) + "</b>" + right + "</button>";
+  }).join("");
+  box.hidden = false;
+}
+function pick(i){
+  const r = sugRows[i]; if (!r) return;
+  addItem(r.name, sugArg, r.isNew ? {cat:r.cat} : null);
+  const inp = $("q"); inp.value = ""; inp.focus(); renderSug();
+}
+
+/* ---------- tekenen ---------- */
+function rowHtml(k, it, nx){
+  const q = it.qty || 1, bd = badge(it);
+  return "<div class='row" + (it.checked ? " done" : "") + (k === flashKey ? " flash" : "") + "' data-a='toggle' data-k='" + esc(k) + "'>" +
+    "<div class='tick'>✓</div><div class='grow'><div class='nm'>" + esc(it.name) + "</div>" + (it.note ? "<div class='nt'>" + esc(it.note) + "</div>" : "") + "</div>" +
+    (it.checked ? (bd ? "<span class='qty'>" + bd + "</span>" : "") :
+      (bd ? "<span class='qty shoponly'>" + bd + "</span>" : "") +
+      (nx ? "<button class='nx' data-a='next' data-k='" + esc(k) + "' data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "'>→ " + esc(nx.name) + "</button>" : "") +
+      "<div class='step'><button data-a='minus' data-k='" + esc(k) + "' aria-label='Minder'>" + (q > stepOf(it.unit) ? "−" : "×") + "</button><b>" + amount(it) + "</b><button data-a='plus' data-k='" + esc(k) + "' aria-label='Meer'>+</button></div>" +
+      "<button class='dots' data-a='edit' data-k='" + esc(k) + "' aria-label='Details'>⋯</button>") +
+    "</div>";
+}
+function render(){
+  if (!ready) return;
+  const all = Object.entries(S.items).sort((a, b) => a[1].name.localeCompare(b[1].name));
+  const open = all.filter(([, v]) => !v.checked), done = all.filter(([, v]) => v.checked);
+  const ts = tripStores(), ids = ts.map(s => s.id), multi = ts.length > 1;
+  $("count").textContent = all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst";
+  $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
+  $("storeBtn").textContent = ts.map(s => s.name).join(" → ") + " ▾";
+  let h = "";
+  const due = dueList();
+  if (due.length) h += "<section class='cat due'><h3>⏰ Tijd voor?<span>volgens jullie koopritme</span></h3><div class='chips' style='padding:0'>" + due.map(p => "<span class='duo'><button data-a='dueadd' data-k='" + esc(p.k) + "'>" + esc(p.name) + " <small>om de " + p.r.days + " dagen</small></button><button data-a='snooze' data-k='" + esc(p.k) + "' aria-label='Nu niet'>×</button></span>").join("") + "</div></section>";
+  if (!all.length) h += "<div class='empty'><div class='big'>🧺</div><h2>De lijst is leeg</h2><div>Typ hierboven wat je nodig hebt, of start met een template of een vorige lijst.</div><p><button class='btn ghost' data-a='templates'>📋 Templates</button> <button class='btn ghost' data-a='history'>🕘 Vorige lijsten</button></p></div>";
+  else if (!open.length) h += "<div class='empty'><div class='big'>🎉</div><h2>Alles binnen!</h2><p><button class='btn' data-a='clear'>Lijst leegmaken</button></p></div>";
+  ts.forEach((st, si) => {
+    const mine = open.filter(([k, v]) => storeOf(k, v, ids) === st.id); if (!mine.length) return;
+    if (multi) h += "<div class='shead'><b>" + (si + 1) + "</b>" + esc(st.name) + "<span>" + mine.length + " te pakken</span></div>";
+    const nx = ts[si + 1] || null;
+    for (const c of order(st)) {
+      const rows = mine.filter(([, v]) => (CAT[v.cat] ? v.cat : "overig") === c);
+      if (rows.length) h += "<section class='cat'><h3>" + CAT[c].ico + " " + esc(CAT[c].name) + "<span>" + rows.length + "</span></h3><div class='card'>" + rows.map(([k, v]) => rowHtml(k, v, nx)).join("") + "</div></section>";
+    }
+  });
+  if (done.length) {
+    done.sort((a, b) => (b[1].checkedAt || 0) - (a[1].checkedAt || 0));
+    h += "<section class='cat'><h3>✅ In het karretje<span><button data-a='clear'>Wissen</button></span></h3><div class='card'>" + done.map(([k, v]) => rowHtml(k, v)).join("") + "</div></section>";
+  }
+  $("list").innerHTML = h; flashKey = null;
+  const ae = document.activeElement;
+  if (sheet && !(ae && ae.tagName === "INPUT" && $("sheetHost").contains(ae))) renderSheet();
+  renderSug();
+}
+
+/* ---------- sheets ---------- */
+function openSheet(kind, arg){ sheet = {kind, arg}; renderSheet(); }
+function closeSheet(){ sheet = null; $("sheetHost").innerHTML = ""; }
+function packCard(kind, id, title, sub, items){
+  const open = sheet.open === id, a = " data-kind='" + kind + "' data-k='" + esc(id) + "'";
+  return "<div class='li col'><div class='line'><button class='grow tl' data-a='pexp'" + a + "><div class='t'>" + title + "</div><div class='d'>" + sub + "</div></button><button class='dots' data-a='pdel'" + a + " aria-label='Verwijderen'>🗑</button></div>" +
+    (open ? "<div class='pits'>" + items.map((i, n) => "<span class='pit'>" + esc((i.unit ? amount(i) + " " : i.qty > 1 ? i.qty + "× " : "") + i.name) + (kind === "templates" ? "<button data-a='pitem' data-k='" + esc(id) + "' data-i='" + n + "' aria-label='Uit template halen'>×</button>" : "") + "</span>").join("") + "</div>" : "") +
+    "<div class='line'><button class='btn ghost sm grow' data-a='puse'" + a + ">Toevoegen aan lijst</button><button class='btn ghost sm grow' data-a='pnew'" + a + ">Als nieuwe lijst</button></div></div>";
+}
+function renderSheet(){
+  if (!sheet) return;
+  let h = "";
+  const closeBtn = "<div style='margin-top:10px'><button class='btn ghost wide' data-a='close'>Sluiten</button></div>";
+  if (sheet.kind === "item") {
+    const k = sheet.arg, it = S.items[k]; if (!it) return closeSheet();
+    const p = product(k), ka = " data-k='" + esc(k) + "'", shops = storeList().filter(s => s.id !== "standaard"), cs = it.store || (p && p.store) || "";
+    h = "<h2>" + esc(it.name) + "</h2><p>Toegevoegd door " + esc(it.by || "onbekend") + "</p>" +
+      "<div class='bigstep'><button data-a='minus'" + ka + ">−</button><b>" + amount(it) + "</b><button data-a='plus'" + ka + ">+</button></div>" +
+      (it.unit === "g" || it.unit === "ml" ? "<div class='chips' style='justify-content:center;padding:0 0 10px'>" + [50, 250, 500].map(n => "<button class='chip' data-a='addq'" + ka + " data-d='" + n + "'>+" + n + "</button>").join("") + "</div>" : "") +
+      "<div class='line'><div class='seg'>" + UNIT_LABEL.map(u => "<button data-a='setunit'" + ka + " data-u='" + u[0] + "' class='" + ((it.unit || "") === u[0] ? "on" : "") + "'>" + u[1] + "</button>").join("") + "</div></div>" +
+      "<div class='line' style='margin-top:8px'><span class='grow' style='color:var(--mute);font-size:14px'>Of typ het precieze aantal</span><input class='field' style='width:110px;text-align:center' id='amtIn'" + ka + " inputmode='decimal' value='" + fmt(it.qty || 1) + "'></div>" +
+      "<h4>Notitie</h4><input class='field' id='noteIn'" + ka + " value='" + esc(it.note) + "' placeholder='bv. merk, rijp, alleen in de aanbieding'>" +
+      (shops.length ? "<h4>Kopen bij</h4><div class='seg'>" + [{id:"", name:"Maakt niet uit"}].concat(shops).map(s => "<button data-a='setstore'" + ka + " data-s='" + esc(s.id) + "' class='" + (cs === s.id ? "on" : "") + "'>" + esc(s.name) + "</button>").join("") + "</div>" : "") +
+      "<h4>Schap</h4><div class='catgrid'>" + CATS.map(c => "<button data-a='setcat'" + ka + " data-c='" + c[0] + "' class='" + (it.cat === c[0] ? "on" : "") + "'><span>" + c[1] + "</span>" + esc(c[2]) + "</button>").join("") + "</div>" +
+      "<p style='margin-top:10px'>Schap, winkel en eenheid worden onthouden voor de volgende keer.</p>" +
+      "<button class='chip" + (p && p.staple ? " on" : "") + "' data-a='stoggle'" + ka + ">" + (p && p.staple ? "✓ Staat in Bijna op" : "🏠 Zet in Bijna op") + "</button>" +
+      "<div class='line' style='margin-top:12px'><button class='btn bad' data-a='del'" + ka + ">Van lijst halen</button>" + (p && p.custom ? "<button class='btn bad' data-a='forget'" + ka + ">Product vergeten</button>" : "") + "<span class='grow'></span><button class='btn' data-a='close'>Klaar</button></div>";
+  } else if (sheet.kind === "templates") {
+    const ts = Object.entries(S.templates).sort((a, b) => a[1].name.localeCompare(b[1].name));
+    const n = Object.keys(S.items).length, sn = id => (storeList().find(s => s.id === id) || {}).name;
+    h = "<h2>Templates</h2><p>Vaste lijstjes. Stapelen kan: voeg eerst Wekelijkse boodschappen toe en daarna Gourmet, dubbele producten worden dan opgeteld. Tik op een naam om de inhoud te zien of aan te passen.</p>" +
+      (ts.length ? ts.map(([id, t]) => packCard("templates", id, esc(t.name) + (t.store && sn(t.store) ? " <span class='off'>· " + esc(sn(t.store)) + "</span>" : ""), (t.items || []).length + " producten: " + esc((t.items || []).map(i => i.name).join(", ")), t.items || [])).join("") : "<div class='li'><div class='d'>Nog geen templates. Zet een lijst klaar en sla hem hieronder op, bijvoorbeeld Wekelijkse boodschappen of Gourmet.</div></div>") +
+      "<h4>Huidige lijst opslaan als template</h4>" +
+      (n ? "<input class='field' id='tName' placeholder='Naam, bv. Gourmet'><label class='check'><input type='checkbox' id='tStore'>Alleen voor " + esc(store().name) + "</label><button class='btn wide' data-a='tsave'>Opslaan (" + n + " producten)</button>" : "<p>Zet eerst producten op de lijst.</p>") + closeBtn;
+  } else if (sheet.kind === "history") {
+    const hs = Object.entries(S.history).sort((a, b) => b[1].at - a[1].at);
+    h = "<h2>Vorige lijsten</h2><p>De laatste 10 winkelbezoeken. Zet er een terug op de lijst, of gebruik hem als nieuwe lijst.</p>" +
+      (hs.length ? hs.map(([id, t]) => packCard("history", id, esc(cap(dateStr(t.at))), esc((t.stores ? t.stores + " · " : "") + (t.items || []).length + " producten: " + (t.items || []).map(i => i.name).join(", ")), t.items || [])).join("") : "<div class='li'><div class='d'>Nog niets bewaard. Zodra je na het winkelen de afgevinkte producten wist, verschijnt dat bezoek hier.</div></div>") + closeBtn;
+  } else if (sheet.kind === "stores") {
+    const ts = tripStores(), ed = sheet.arg && storeList().find(s => s.id === sheet.arg);
+    h = "<h2>Winkels en looproute</h2><p>Tik de winkels aan in de volgorde waarin je ze vandaag bezoekt. De lijst krijgt dan per winkel een eigen blok, elk in de looproute van die winkel. Producten zonder vaste winkel staan bij de eerste winkel.</p>" +
+      storeList().map(s => { const i = ts.findIndex(t => t.id === s.id), a = " data-k='" + esc(s.id) + "'"; return "<div class='li'><button class='num" + (i >= 0 ? " on" : "") + "' data-a='trip'" + a + ">" + (i >= 0 ? i + 1 : "") + "</button><button class='grow tl t' data-a='trip'" + a + ">" + esc(s.name) + "</button><button class='btn ghost sm' data-a='sedit'" + a + ">" + (ed && ed.id === s.id ? "Inklappen" : "Looproute") + "</button></div>"; }).join("") +
+      "<div class='line'><input class='field' id='sName' placeholder='Nieuwe winkel, bv. Lidl'><button class='btn' data-a='sadd'>Toevoegen</button></div>";
+    if (ed) { const ord = order(ed);
+      h += "<h4>Looproute " + esc(ed.name) + "</h4>" + ord.map((c, i) => "<div class='li'><span>" + CAT[c].ico + "</span><div class='grow t' style='font-weight:600'>" + esc(CAT[c].name) + "</div><button class='mv' data-a='smove' data-k='" + i + "' data-d='-1' " + (i ? "" : "disabled") + " aria-label='Omhoog'>▲</button><button class='mv' data-a='smove' data-k='" + i + "' data-d='1' " + (i < ord.length - 1 ? "" : "disabled") + " aria-label='Omlaag'>▼</button></div>").join("") +
+        (ed.id !== "standaard" ? "<button class='btn bad' data-a='sdel'>" + esc(ed.name) + " verwijderen</button>" : ""); }
+    h += closeBtn;
+  } else if (sheet.kind === "staples") {
+    const edit = sheet.arg === "edit", st = allProducts().filter(p => p.staple).sort((a, b) => a.name.localeCompare(b.name));
+    h = "<h2>Bijna op</h2><p>" + (edit ? "Tik op een product om het uit dit overzicht te halen." : "Tik aan wat thuis bijna op is. Het staat dan direct op de boodschappenlijst.") + "</p>";
+    for (const c of DEFAULT_ORDER) { const r = st.filter(p => p.cat === c); if (r.length) h += "<h4>" + CAT[c].ico + " " + esc(CAT[c].name) + "</h4><div class='chips' style='padding:0'>" + r.map(p => "<button class='chip" + (!edit && onList(p.k) ? " on" : "") + "' data-a='staple' data-k='" + esc(p.k) + "'>" + (edit ? "× " : onList(p.k) ? "✓ " : "") + esc(p.name) + "</button>").join("") + "</div>"; }
+    if (!st.length) h += "<div class='li'><div class='d'>Nog geen vaste producten. Voeg hieronder toe wat jullie altijd in huis willen hebben.</div></div>";
+    const sug = allProducts().filter(p => !p.staple && p.n >= 2).sort((a, b) => b.n - a.n).slice(0, 8);
+    h += "<h4>Vast product toevoegen</h4><div class='line'><input class='field' id='stName' placeholder='bv. Olijfolie'><button class='btn' data-a='stnew'>Toevoegen</button></div>" +
+      (sug.length ? "<h4>Vaak gekocht, ook vast maken?</h4><div class='chips' style='padding:0'>" + sug.map(p => "<button class='chip' data-a='stadd' data-k='" + esc(p.k) + "'>+ " + esc(p.name) + "</button>").join("") + "</div>" : "") +
+      "<div class='line' style='margin-top:14px'><button class='btn ghost grow' data-a='stedit'>" + (edit ? "Klaar met beheren" : "Beheren") + "</button><button class='btn grow' data-a='close'>Sluiten</button></div>";
+  } else if (sheet.kind === "account") {
+    h = "<h2>" + (user ? esc(user.displayName || "Ingelogd") : "Demomodus") + "</h2><p>" + (user ? esc(user.email) : "Niet gekoppeld aan Firebase. Alles staat alleen in deze browser.") + "</p>" +
+      (user ? "<button class='btn ghost wide' data-a='signout'>Uitloggen</button>" : "") +
+      "<div style='margin-top:10px'><button class='btn wide' data-a='close'>Sluiten</button></div>";
+  }
+  const first = !sheet.shown, old = $("sheetHost").querySelector(".sheet"), sc = old ? old.scrollTop : 0; sheet.shown = true;
+  $("sheetHost").innerHTML = "<div class='veil" + (first ? " anim" : "") + "' data-a='veil'><div class='sheet'><div class='grab'></div>" + h + "</div></div>";
+  if (!first) $("sheetHost").querySelector(".sheet").scrollTop = sc;
+}
+
+/* ---------- toast ---------- */
+let toastTimer;
+function toast(msg, act, fn){
+  clearTimeout(toastTimer);
+  const host = $("toastHost");
+  host.innerHTML = "<div class='toast'><span>" + esc(msg) + "</span>" + (act ? "<button>" + esc(act) + "</button>" : "") + "</div>";
+  if (act) host.querySelector("button").onclick = () => { host.innerHTML = ""; fn(); };
+  toastTimer = setTimeout(() => { host.innerHTML = ""; }, act ? 6000 : 2600);
+}
+
+/* ---------- gebeurtenissen ---------- */
+const packName = (kind, p) => kind === "templates" ? p.name : "Lijst van " + dateStr(p.at);
+const ACT = {
+  toggle:k => toggle(k), plus:k => step(k, 1), minus:k => step(k, -1), edit:k => openSheet("item", k),
+  del:k => { closeSheet(); removeItem(k); },
+  forget:k => { closeSheet(); DB.del("items", k); DB.del("products", k); toast("Product vergeten"); },
+  setcat:(k, t) => { const c = t.dataset.c, it = S.items[k]; DB.set("items", k, {cat:c}); DB.set("products", k, {name:it.name, cat:c}); },
+  addq:(k, t) => DB.inc("items", k, "qty", +t.dataset.d),
+  setunit:(k, t) => {
+    const it = S.items[k], u = t.dataset.u, from = it.unit || ""; if (u === from) return;
+    const c = convert(it.qty || 1, from, u), qty = c === null ? defQty(u) : c;
+    DB.set("items", k, {unit:u, qty}); DB.set("products", k, {name:it.name, cat:it.cat, unit:u, dq:qty});
+  },
+  setstore:(k, t) => { const it = S.items[k], s = t.dataset.s; DB.set("items", k, {store:s}); DB.set("products", k, {name:it.name, cat:it.cat, store:s}); },
+  next:(k, t) => { const it = S.items[k], s = t.dataset.s; DB.set("items", k, {store:s}); toast(it.name + " verplaatst naar " + t.dataset.n, "Altijd daar kopen", () => DB.set("products", k, {name:it.name, cat:it.cat, store:s})); },
+  stoggle:k => { const it = S.items[k], p = product(k); DB.set("products", k, {name:it.name, cat:it.cat, staple:!(p && p.staple)}); },
+  clear:clearDone, close:closeSheet,
+  veil:(k, t, e) => { if (e.target === t) closeSheet(); },
+  templates:() => openSheet("templates"), history:() => openSheet("history"), stores:() => openSheet("stores"), staples:() => openSheet("staples"), account:() => openSheet("account"),
+  pick:k => pick(+k),
+  quick:k => { const p = product(k); if (p) addItem(p.name); $("q").focus(); },
+  dueadd:k => { const p = product(k); if (p) addItem(p.name); },
+  snooze:k => { const p = product(k); if (!p) return; const r = rhythm(p); DB.set("products", k, {name:p.name, cat:p.cat, snooze:Date.now() + (r ? r.days : 4) * DAY / 2}); },
+  shop:() => {
+    const on = document.body.classList.toggle("shop"); window.scrollTo(0, 0);
+    try { if (on && navigator.wakeLock) navigator.wakeLock.request("screen").then(l => { wake = l; }).catch(() => {}); else if (wake) { wake.release(); wake = null; } } catch {}
+    if (on) toast("Winkelmodus: tik een product aan om af te vinken");
+  },
+  share:() => {
+    const lines = [], ts = tripStores(), ids = ts.map(s => s.id);
+    for (const st of ts) {
+      const mine = Object.entries(S.items).filter(([k, v]) => !v.checked && storeOf(k, v, ids) === st.id).map(e => e[1]); if (!mine.length) continue;
+      if (ts.length > 1) lines.push("== " + st.name + " ==");
+      for (const c of order(st)) { const r = mine.filter(v => v.cat === c).sort((a, b) => a.name.localeCompare(b.name)); if (r.length) lines.push(CAT[c].name + ":", ...r.map(v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : "")), ""); }
+    }
+    if (!lines.length) return toast("Er staat niets open op de lijst");
+    const txt = lines.join("\n").trim();
+    (navigator.share ? navigator.share({text:txt}) : navigator.clipboard.writeText(txt).then(() => toast("Lijst gekopieerd"))).catch(() => {});
+  },
+  pexp:k => { sheet.open = sheet.open === k ? null : k; renderSheet(); },
+  puse:(k, t) => { const p = S[t.dataset.kind][k]; if (p) applyPack(packName(t.dataset.kind, p), p.items, false); },
+  pnew:(k, t) => { const p = S[t.dataset.kind][k]; if (p) applyPack(packName(t.dataset.kind, p), p.items, true); },
+  pdel:(k, t) => { const c = t.dataset.kind, old = S[c][k]; DB.del(c, k); toast("Verwijderd", "Ongedaan maken", () => DB.set(c, k, old)); },
+  pitem:(k, t) => { const tp = S.templates[k]; if (tp) DB.set("templates", k, {items:(tp.items || []).filter((x, i) => i !== +t.dataset.i)}); },
+  tsave:() => {
+    const name = $("tName").value.trim(); if (!name) return $("tName").focus();
+    const st = $("tStore").checked ? store().id : "";
+    DB.set("templates", keyOf(name) + (st ? " @" + st : ""), {name, store:st, items:Object.values(S.items).map(slim), at:Date.now()});
+    $("tName").value = ""; $("tName").blur(); renderSheet(); toast("Template " + name + " opgeslagen");
+  },
+  trip:k => {
+    let ids = trip.length ? tripStores().map(s => s.id) : [];
+    if (ids.includes(k)) { if (ids.length > 1) ids = ids.filter(i => i !== k); } else ids.push(k);
+    setTrip(ids);
+  },
+  sadd:() => { const name = $("sName").value.trim(); if (!name) return $("sName").focus(); const id = keyOf(name); DB.set("stores", id, {name, order:order()}); $("sName").value = ""; $("sName").blur(); setTrip((trip.length ? tripStores().map(s => s.id) : []).filter(i => i !== id).concat(id)); },
+  sedit:k => { sheet.arg = sheet.arg === k ? null : k; renderSheet(); },
+  smove:(k, t) => { const st = storeList().find(s => s.id === sheet.arg); if (!st) return; const o = order(st), i = +k, j = i + (+t.dataset.d); [o[i], o[j]] = [o[j], o[i]]; DB.set("stores", st.id, {name:st.name, order:o}); },
+  sdel:() => { const id = sheet.arg; sheet.arg = null; DB.del("stores", id); setTrip(trip.filter(i => i !== id)); },
+  staple:k => {
+    const p = product(k); if (!p) return;
+    if (sheet.arg === "edit") return DB.set("products", k, {name:p.name, cat:p.cat, staple:false});
+    if (onList(k)) removeItem(k); else addItem(p.name, null, null, true);
+  },
+  stadd:k => { const p = product(k); if (p) DB.set("products", k, {name:p.name, cat:p.cat, staple:true}); },
+  stnew:() => { const name = $("stName").value.trim(); if (!name) return $("stName").focus(); const k = keyOf(name), p = product(k); DB.set("products", k, {name:p ? p.name : cap(name), cat:p ? p.cat : guessCat(name), staple:true}); $("stName").value = ""; $("stName").blur(); renderSheet(); },
+  stedit:() => { sheet.arg = sheet.arg === "edit" ? null : "edit"; renderSheet(); },
+  signout:() => { closeSheet(); DB.signOut(); }
+};
+document.addEventListener("click", e => { const t = e.target.closest("[data-a]"); if (t && ACT[t.dataset.a]) ACT[t.dataset.a](t.dataset.k, t, e); });
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.id === "noteIn") DB.set("items", t.dataset.k, {note:t.value.trim()});
+  if (t.id === "amtIn") { const n = parseFloat(t.value.replace(",", ".")); if (n > 0) DB.set("items", t.dataset.k, {qty:Math.round(n * 100) / 100}); t.blur(); renderSheet(); }
+});
+$("addForm").addEventListener("submit", e => {
+  e.preventDefault();
+  if (!keyOf(parse($("q").value).name)) return $("q").focus();
+  renderSug(); pick(enterIdx);
+});
+$("q").addEventListener("input", renderSug);
+$("q").addEventListener("focus", renderSug);
+$("q").addEventListener("blur", () => setTimeout(renderSug, 180));
+$("sug").addEventListener("pointerdown", e => e.preventDefault());
+const net = () => { $("off").hidden = navigator.onLine !== false; };
+addEventListener("online", net); addEventListener("offline", net); net();
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && document.body.classList.contains("shop") && navigator.wakeLock) navigator.wakeLock.request("screen").then(l => { wake = l; }).catch(() => {}); });
+
+/* ---------- start ---------- */
+const cfg = window.FIREBASE_CONFIG || {};
+if (cfg.apiKey) { DB = Fire; Fire.init(cfg).catch(e => gate("Firebase laden mislukt: " + (e.message || e))); }
+else { DB = Local; Local.init(); }
+try { if ("serviceWorker" in navigator && location.protocol === "https:" && cfg.apiKey) navigator.serviceWorker.register("sw.js").catch(() => {}); } catch {}
+</script>
+</body>
+</html>
