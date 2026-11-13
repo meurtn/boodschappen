@@ -9,7 +9,7 @@ Zonder Firebase-configuratie draait de app in demomodus (alleen lokaal), zodat j
 |---|---|
 | `index.html` | De hele app (opmaak, logica, productcatalogus) |
 | `firebase-config.js` | Jouw Firebase-configuratie; blijft staan bij updates van `index.html` |
-| `firestore.rules` | Toegangsregels met de vaste lijst mailadressen |
+| `firestore.local.rules` | Toegangsregels met de vaste lijst mailadressen. Staat bewust niet op GitHub (zie `.gitignore`) |
 | `sw.js`, `manifest.webmanifest`, `icon-*.png` | Installeren op het beginscherm en offline starten |
 | `firebase.json` | Instellingen voor `firebase deploy` |
 
@@ -19,7 +19,7 @@ Zonder Firebase-configuratie draait de app in demomodus (alleen lokaal), zodat j
 2. **Authentication > Sign-in method**: zet Google aan.
 3. **Firestore Database**: maak een database aan (productiemodus, regio `eur3` of `europe-west4`).
 4. **Projectinstellingen > Jouw apps > Web-app toevoegen** en plak de waarden in `firebase-config.js`.
-5. Zet in `firestore.rules` de Google-adressen van je gezin.
+5. Zet in `firestore.local.rules` de Google-adressen van je gezin.
 6. Publiceer vanuit deze map:
    ```
    npm install -g firebase-tools
@@ -34,7 +34,7 @@ Liever GitHub Pages? Dat kan ook: voeg dan het Pages-domein toe onder **Authenti
 
 ## Beveiliging
 
-De toegang wordt afgedwongen door `firestore.rules` op de server, niet in de app. Wie niet in de lijst staat kan wel inloggen met Google, maar krijgt niets te zien en kan niets schrijven. De waarden in `firebase-config.js` zijn geen geheim.
+De toegang wordt afgedwongen door `firestore.local.rules` op de server, niet in de app. Wie niet in de lijst staat kan wel inloggen met Google, maar krijgt niets te zien en kan niets schrijven. De waarden in `firebase-config.js` zijn geen geheim.
 
 ## Gegevensmodel (Firestore)
 

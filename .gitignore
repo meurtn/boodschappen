@@ -1,0 +1,7 @@
+# Bevat de mailadressen van het gezin. Gaat rechtstreeks naar Firebase met: firebase deploy --only firestore:rules
+firestore.local.rules
+
+# Firebase CLI
+.firebase/
+.firebaserc
+firebase-debug.log
