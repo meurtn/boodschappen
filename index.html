@@ -143,6 +143,7 @@ button.cell:active{background:var(--fill)}
 .nx{flex:none;display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 10px;margin-right:4px;border-radius:9px;border:1px solid var(--line);color:var(--mute);font-size:13px}
 .nx .i{width:13px;height:13px}
 .row.flash,.cell.flash{animation:fl 1s ease-out}
+.leave{transition:height .28s var(--ease),min-height .28s var(--ease),margin .28s var(--ease),opacity .2s ease-out,border-color .2s;height:0!important;min-height:0!important;margin-top:0!important;margin-bottom:0!important;opacity:0;border-color:transparent!important}
 @keyframes fl{from{background:var(--soft)}}
 
 /* knoppen, velden, chips */
@@ -486,7 +487,7 @@ function step(k, d){
   if (d < 0 && q <= st) return removeItem(k);
   DB.inc("items", k, "qty", d * st);
 }
-function toggle(k){
+function toggle(k, quiet){
   const it = S.items[k]; if (!it) return;
   DB.set("items", k, {checked:!it.checked, checkedAt:Date.now(), checkedBy:me()});
   if (!it.checked) { // aankoop vastleggen voor het koopritme (meerdere tikken binnen 12 uur tellen als een)
@@ -494,7 +495,7 @@ function toggle(k){
     if (b.length && now - b[b.length - 1] < DAY / 2) b[b.length - 1] = now; else b.push(now);
     DB.set("products", k, {name:it.name, cat:it.cat, buys:b.slice(-6)});
   }
-  try { navigator.vibrate && navigator.vibrate(8); } catch {}
+  if (!quiet) try { navigator.vibrate && navigator.vibrate(8); } catch {}
 }
 function clearDone(){
   const done = Object.entries(S.items).filter(([, v]) => v.checked); if (!done.length) return;
@@ -783,8 +784,27 @@ PAGES.product = () => {
 
 /* ---------- tekenen ---------- */
 function buildTabs(){ $("tabs").innerHTML = TABS.map(t => "<button data-a='nav' data-k='" + t[0] + "'><span class='tp'>" + ico(t[2]) + "</span><span>" + t[1] + "</span></button>").join(""); }
+// Tijdens het wegschuiven van een afgevinkt product wordt niet opnieuw getekend; daarna in een keer.
+let hold = 0, pending = false;
+const leaving = new Set();
+function release(){ if (--hold <= 0) { hold = 0; if (pending) { pending = false; render(); } } }
+function leaveRow(row, k, checking){
+  hold++; leaving.add(k);
+  if (checking) row.classList.add("done", "just");
+  try { navigator.vibrate && navigator.vibrate(8); } catch {}
+  setTimeout(() => {
+    const group = row.parentElement, rest = [...group.children].filter(r => !r.classList.contains("leave") && r !== row);
+    const els = [row];
+    if (!rest.length) { const head = group.previousElementSibling; els.push(group); if (head && head.classList.contains("ch")) els.push(head); }
+    els.forEach(el => { el.style.height = el.offsetHeight + "px"; el.style.overflow = "hidden"; });
+    void row.offsetHeight;
+    els.forEach(el => el.classList.add("leave"));
+    setTimeout(() => { leaving.delete(k); toggle(k, true); release(); }, 300);
+  }, checking ? 200 : 60);
+}
 function render(force){
   if (!ready || !route || dragLock) return;
+  if (hold > 0) { pending = true; return; }
   const isList = route === "lijst";
   $("pgList").hidden = !isList; $("listHead").hidden = !isList; $("page").hidden = isList;
   let P;
@@ -828,7 +848,12 @@ const packName = (kind, p) => kind === "templates" ? p.name : "Lijst van " + dat
 const tripIds = () => trip.length ? tripStores().map(s => s.id) : [];
 const ACT = {
   nav:(k, t) => go(k, t.dataset.arg), back,
-  toggle:k => { const it = S.items[k]; if (!it) return; if (!it.checked) tick = {k, t:Date.now()}; toggle(k); },
+  toggle:k => {
+    const it = S.items[k]; if (!it || leaving.has(k)) return;
+    const row = document.querySelector("#list .row [data-k='" + CSS.escape(k) + "']");
+    if (route !== "lijst" || !row) { toggle(k); return; }
+    leaveRow(row.closest(".row"), k, !it.checked);
+  },
   rowtap:k => { const it = S.items[k]; if (!it) return; if (it.checked || document.body.classList.contains("shop")) ACT.toggle(k); else go("product", k); },
   plus:k => step(k, 1), minus:k => step(k, -1),
   del:k => { back(); removeItem(k); },
