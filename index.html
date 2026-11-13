@@ -543,7 +543,7 @@ const IC = {
   up:"<path d='m6 14 6-6 6 6'/>", down:"<path d='m6 10 6 6 6-6'/>",
   plus:"<path d='M12 5v14M5 12h14'/>", minus:"<path d='M5 12h14'/>",
   check:"<path d='m5 12.5 4.5 4.5L19 7.5'/>", x:"<path d='M6 6l12 12M18 6 6 18'/>",
-  arrowR:"<path d='M5 12h14M13 6l6 6-6 6'/>", arrowUp:"<path d='M12 19V5M6 11l6-6 6 6'/>",
+  arrowR:"<path d='M5 12h14M13 6l6 6-6 6'/>", arrowL:"<path d='M19 12H5M11 6l-6 6 6 6'/>", arrowUp:"<path d='M12 19V5M6 11l6-6 6 6'/>",
   pin:"<path d='M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z'/><circle cx='12' cy='10' r='2.5'/>",
   clock:"<circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/>",
   share:"<path d='M12 15V3M8 7l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7'/>",
@@ -648,14 +648,15 @@ function pick(i){
 }
 
 /* ---------- de lijst ---------- */
-function rowHtml(k, it, nx){
+function rowHtml(k, it, nx, pv){
   const q = it.qty || 1, bd = badge(it), ka = " data-k='" + esc(k) + "'";
   return "<div class='row" + (it.checked ? " done" : "") + (k === flashKey ? " flash" : "") + (tick.k === k && Date.now() - tick.t < 400 ? " just" : "") + "'>" +
     "<button class='tick' data-a='toggle'" + ka + " aria-label='" + (it.checked ? "Terugzetten" : "Afvinken") + "'><span class='c'>" + ico("check") + "</span></button>" +
     "<button class='rmain' data-a='rowtap'" + ka + "><span class='nm'>" + esc(it.name) + "</span>" + (it.note ? "<span class='nt'>" + esc(it.note) + "</span>" : "") + "</button>" +
     (it.checked ? (bd ? "<span class='qty'>" + bd + "</span>" : "") :
       (bd ? "<span class='qty shoponly'>" + bd + "</span>" : "") +
-      (nx ? "<button class='nx' data-a='next'" + ka + " data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "'>" + ico("arrowR") + esc(nx.name) + "</button>" : "") +
+      (pv ? "<button class='nx' data-a='next'" + ka + " data-s='" + esc(pv.id) + "' data-n='" + esc(pv.name) + "' aria-label='Terug naar " + esc(pv.name) + "'>" + ico("arrowL") + esc(pv.name) + "</button>" : "") +
+      (nx ? "<button class='nx' data-a='next'" + ka + " data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "' aria-label='Naar " + esc(nx.name) + "'>" + ico("arrowR") + esc(nx.name) + "</button>" : "") +
       "<div class='step'><button data-a='minus'" + ka + " aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(it) + "</b><button data-a='plus'" + ka + " aria-label='Meer'>" + ico("plus") + "</button></div>") +
     "</div>";
 }
@@ -674,10 +675,10 @@ function renderList(){
   ts.forEach((st, si) => {
     const mine = open.filter(([k, v]) => storeOf(k, v, ids) === st.id); if (!mine.length) return;
     if (multi) h += "<div class='shead'><b>" + (si + 1) + "</b><span>" + esc(st.name) + "</span><small>" + mine.length + " te pakken</small></div>";
-    const nx = ts[si + 1] || null;
+    const nx = ts[si + 1] || null, pv = ts[si - 1] || null;
     for (const c of order(st)) {
       const rows = mine.filter(([, v]) => (CAT[v.cat] ? v.cat : "overig") === c);
-      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx)).join("") + "</div>";
+      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx, pv)).join("") + "</div>";
     }
   });
   if (done.length) {
@@ -840,7 +841,7 @@ const ACT = {
     const c = convert(it.qty || 1, from, u), qty = c === null ? defQty(u) : c;
     DB.set("items", k, {unit:u, qty}); DB.set("products", k, {name:it.name, cat:it.cat, unit:u, dq:qty});
   },
-  next:(k, t) => { const it = S.items[k], s = t.dataset.s; DB.set("items", k, {store:s}); toast(it.name + " verplaatst naar " + t.dataset.n, "Altijd daar kopen", () => DB.set("products", k, {name:it.name, cat:it.cat, store:s})); },
+  next:(k, t) => { const it = S.items[k], s = t.dataset.s, was = storeOf(k, it, tripStores().map(x => x.id)); flashKey = k; DB.set("items", k, {store:s}); toast(it.name + " verplaatst naar " + t.dataset.n, "Ongedaan maken", () => { flashKey = k; DB.set("items", k, {store:was}); }); },
   stoggle:(k, t) => { const it = S.items[k], on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => DB.set("products", k, {name:it.name, cat:it.cat, staple:on}), 200); },
   clear:clearDone,
   pick:k => pick(+k),
