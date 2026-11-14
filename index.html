@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Lijstjes</title>
-<meta name="theme-color" id="themeColor" content="#f6f6f3">
+<meta name="theme-color" id="themeColor" content="#edf1f6">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Lijstjes">
 <link rel="manifest" href="manifest.webmanifest">
@@ -17,14 +17,14 @@ document.documentElement.dataset.theme=d?"dark":"light"})();
 </script>
 <style>
 :root{
-  --bg:#f6f6f3;--surface:#fff;--fill:#eeeeea;--text:#1d1f1e;--mute:#6c716c;--faint:#a9ada8;--line:#e3e3de;
-  --acc:#2f6b53;--acc-ink:#fff;--soft:#e4eee8;--danger:#b4412f;
-  --bar:rgba(246,246,243,.86);--ease:cubic-bezier(.2,.7,.2,1);color-scheme:light;
+  --bg:#edf1f6;--surface:#fff;--fill:#e2e8f0;--text:#18202b;--mute:#5f6b7c;--faint:#9aa5b4;--line:#d5dce6;
+  --acc:#2b5fa8;--acc-ink:#fff;--soft:#dde8f7;--danger:#b4412f;
+  --bar:rgba(237,241,246,.86);--ease:cubic-bezier(.2,.7,.2,1);color-scheme:light;
 }
 :root[data-theme=dark]{
-  --bg:#111413;--surface:#1a1e1c;--fill:#232826;--text:#e6e8e6;--mute:#969c98;--faint:#636965;--line:#2a2f2d;
-  --acc:#76c3a1;--acc-ink:#0e1512;--soft:#1d2c25;--danger:#e8836f;
-  --bar:rgba(17,20,19,.86);color-scheme:dark;
+  --bg:#0d1116;--surface:#1c232d;--fill:#28313d;--text:#e6eaf0;--mute:#98a5b5;--faint:#657182;--line:#313b48;
+  --acc:#7fb0ee;--acc-ink:#0b1420;--soft:#223450;--danger:#e8836f;
+  --bar:rgba(13,17,22,.86);color-scheme:dark;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
@@ -224,7 +224,7 @@ body:not(.shop) .shoponly,body:not(.shop) .nx,body:not(.shop) .shopbar{display:n
 @keyframes tin{from{opacity:0;transform:translate(-50%,10px)}}
 .toast button{font-weight:600;white-space:nowrap;color:inherit;text-decoration:underline;text-underline-offset:3px}
 .gate{position:fixed;inset:0;z-index:40;background:var(--bg);display:grid;place-items:center;padding:24px;text-align:center}
-.gate .logo{width:60px;height:60px;border-radius:17px;background:var(--acc);color:var(--acc-ink);display:grid;place-items:center;margin:0 auto 20px}
+.gate .logo{width:60px;height:60px;border-radius:17px;background:#a9cdf1;color:#17457f;display:grid;place-items:center;margin:0 auto 20px}
 .gate .logo .i{width:28px;height:28px;stroke-width:1.8}
 .gate h1{font-size:24px;font-weight:600;letter-spacing:-.015em;margin-bottom:6px}
 .gate p{color:var(--mute);max-width:300px;margin:0 auto 24px;font-size:15px}
@@ -562,7 +562,7 @@ const mq = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : {mat
 function applyTheme(){
   const t = pref.get("theme", "auto"), dark = t === "dark" || (t === "auto" && mq.matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  $("themeColor").content = dark ? "#111413" : "#f6f6f3";
+  $("themeColor").content = dark ? "#0d1116" : "#edf1f6";
 }
 try { mq.addEventListener("change", applyTheme); } catch {}
 
