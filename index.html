@@ -137,7 +137,32 @@ button.cell:active{background:var(--fill)}
 .qty{font-size:14px;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap;flex:none}
 
 /* productregels */
-.row{display:flex;align-items:center;min-height:52px;padding-right:8px;border-bottom:1px solid var(--line)}
+.row{display:flex;align-items:stretch;min-height:52px;border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+.rin{flex:1;display:flex;align-items:center;padding-right:8px;background:var(--surface);position:relative;z-index:1;min-width:0}
+body.shop .row{touch-action:pan-y}
+.swl{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:var(--fill);color:var(--mute);font-size:14px;font-weight:500;opacity:0;transition:background-color .15s,color .15s}
+.swl span{visibility:hidden}
+.row.swiping .swl{opacity:1}
+.row.sl .swl span:first-child,.row.sr .swl span:last-child{visibility:visible}
+.row.go .swl{background:var(--q1);color:var(--acc-ink)}
+.row.miss .nm{color:var(--mute)}
+.row.miss .nm .qty{padding:0 0 0 4px;font-size:13px}
+/* lijstmodus is plannen: geen afvinkrondjes */
+body:not(.shop) .row .tick{display:none}
+body:not(.shop) .row .rin .rmain{padding-left:14px}
+.cartnote{display:flex;align-items:center;gap:4px;background:var(--soft);border-radius:12px;padding:6px 6px 6px 14px;margin:6px 0 4px;font-size:14px;color:var(--acc)}
+.cartnote .tb{padding:8px}
+.modal{position:fixed;inset:0;z-index:35;background:rgba(10,15,22,.38);display:flex;align-items:flex-end;justify-content:center;padding:12px 12px calc(12px + env(safe-area-inset-bottom));animation:fade .18s}
+.modal.out{animation:fadeout .16s forwards}
+@keyframes fade{from{opacity:0}}
+@keyframes fadeout{to{opacity:0}}
+.mcard{width:100%;max-width:528px;background:var(--surface);border-radius:20px;padding:22px 18px 16px;box-shadow:0 18px 50px rgba(0,0,0,.22);animation:rise .24s var(--ease)}
+@keyframes rise{from{transform:translateY(24px);opacity:.4}}
+.mcard h2{font-size:19px;font-weight:600;letter-spacing:-.01em;margin:0 2px 12px}
+.stat{display:flex;align-items:baseline;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.stat:last-of-type{border-bottom:0}
+.stat b{font-size:22px;font-weight:600;color:var(--q1);min-width:30px;font-variant-numeric:tabular-nums}
+.stat small{color:var(--mute);font-size:13px}
 .row:last-child{border-bottom:0}
 .tick{width:48px;align-self:stretch;display:grid;place-items:center;flex:none}
 .tick .c{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--faint);display:grid;place-items:center;transition:background-color .18s,border-color .18s}
@@ -161,7 +186,7 @@ button.cell:active{background:var(--fill)}
 .step b{color:var(--q2);min-width:18px;padding:0 2px;text-align:center;font-size:14.5px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
 .nx{flex:none;display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 10px;margin-right:4px;border-radius:9px;border:1px solid var(--line);color:var(--mute);font-size:13px}
 .nx .i{width:13px;height:13px}
-.row.flash,.cell.flash{animation:fl 1s ease-out}
+.row.flash .rin,.cell.flash{animation:fl 1s ease-out}
 .leave{transition:height .28s var(--ease),min-height .28s var(--ease),margin .28s var(--ease),opacity .2s ease-out,border-color .2s;height:0!important;min-height:0!important;margin-top:0!important;margin-bottom:0!important;opacity:0;border-color:transparent!important}
 @keyframes fl{from{background:var(--soft)}}
 
@@ -220,20 +245,24 @@ button.chip:active{transform:scale(.96)}
 .group.sorting .cell.drag.drop{transition:transform .19s var(--ease),box-shadow .19s;box-shadow:none}
 body:has(.sorting){user-select:none;-webkit-user-select:none}
 
-:root[data-dens=b] body:not(.shop) .row{min-height:44px}
-:root[data-dens=b] body:not(.shop) .rmain{padding:5px 8px 5px 0}
-:root[data-dens=b] body:not(.shop) .step{height:30px}:root[data-dens=b] body:not(.shop) .step button{width:30px;height:28px}
-:root[data-dens=b] body:not(.shop) .ch{margin:16px 2px 6px}
-:root[data-dens=c] body:not(.shop) .row{min-height:40px}
-:root[data-dens=c] body:not(.shop) .rmain{padding:3px 8px 3px 0}
-:root[data-dens=c] body:not(.shop) .tick{width:42px}:root[data-dens=c] body:not(.shop) .tick .c{width:20px;height:20px}
-:root[data-dens=c] body:not(.shop) .step{height:28px;border-radius:8px}:root[data-dens=c] body:not(.shop) .step button{width:28px;height:26px}:root[data-dens=c] body:not(.shop) .step b{font-size:14px}
-:root[data-dens=c] body:not(.shop) .ch{margin:14px 2px 5px}:root[data-dens=c] body:not(.shop) .group{margin-bottom:10px;border-radius:12px}
-:root[data-dens=d] body:not(.shop) .row{min-height:36px}
-:root[data-dens=d] body:not(.shop) .rmain{padding:2px 8px 2px 0}:root[data-dens=d] body:not(.shop) .nm{font-size:15px}
-:root[data-dens=d] body:not(.shop) .tick{width:40px}:root[data-dens=d] body:not(.shop) .tick .c{width:18px;height:18px}
-:root[data-dens=d] body:not(.shop) .step{height:26px;border:0;background:var(--fill);border-radius:7px}:root[data-dens=d] body:not(.shop) .step button{width:26px;height:26px}:root[data-dens=d] body:not(.shop) .step .i{width:13px;height:13px}:root[data-dens=d] body:not(.shop) .step b{font-size:13.5px}
-:root[data-dens=d] body:not(.shop) .ch{margin:12px 2px 4px;font-size:12.5px}:root[data-dens=d] body:not(.shop) .group{margin-bottom:8px;border-radius:11px}
+:root[data-dens=b] body .row{min-height:44px}
+:root[data-dens=b] body .rmain{padding:5px 8px 5px 0}
+:root[data-dens=b] body .step{height:30px}:root[data-dens=b] body .step button{width:30px;height:28px}
+:root[data-dens=b] body .ch{margin:16px 2px 6px}
+:root[data-dens=c] body .row{min-height:40px}
+:root[data-dens=c] body .rmain{padding:3px 8px 3px 0}
+:root[data-dens=c] body .tick{width:42px}:root[data-dens=c] body .tick .c{width:20px;height:20px}
+:root[data-dens=c] body .step{height:28px;border-radius:8px}:root[data-dens=c] body .step button{width:28px;height:26px}:root[data-dens=c] body .step b{font-size:14px}
+:root[data-dens=c] body .ch{margin:14px 2px 5px}:root[data-dens=c] body .group{margin-bottom:10px;border-radius:12px}
+:root[data-dens=d] body .row{min-height:36px}
+:root[data-dens=d] body .rmain{padding:2px 8px 2px 0}:root[data-dens=d] body .nm{font-size:15px}
+:root[data-dens=d] body .tick{width:40px}:root[data-dens=d] body .tick .c{width:18px;height:18px}
+:root[data-dens=d] body .step{height:26px;border:0;background:var(--fill);border-radius:7px}:root[data-dens=d] body .step button{width:26px;height:26px}:root[data-dens=d] body .step .i{width:13px;height:13px}:root[data-dens=d] body .step b{font-size:13.5px}
+:root[data-dens=d] body .ch{margin:12px 2px 4px;font-size:12.5px}:root[data-dens=d] body .group{margin-bottom:8px;border-radius:11px}
+:root[data-dens=b] body.shop .row{min-height:52px}:root[data-dens=b] body.shop .nm{font-size:16.5px}
+:root[data-dens=c] body.shop .row{min-height:46px}:root[data-dens=c] body.shop .nm{font-size:16px}:root[data-dens=c] body.shop .tick .c{width:23px;height:23px}
+:root[data-dens=d] body.shop .row{min-height:42px}:root[data-dens=d] body.shop .nm{font-size:15.5px}:root[data-dens=d] body.shop .tick .c{width:21px;height:21px}
+.sep{height:1px;background:var(--line);border:0;margin:28px 2px 6px}
 .range{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px 10px;margin-bottom:10px}
 .range input{width:100%;margin:0;accent-color:var(--acc);height:28px}
 .range .ticks{display:flex;justify-content:space-between;font-size:12.5px;color:var(--mute);margin-top:2px}
@@ -305,9 +334,10 @@ body:not(.shop) .shoponly,body:not(.shop) .nx,body:not(.shop) .shopbar{display:n
 </main>
 
 <nav class="tabs"><div id="tabs"></div></nav>
-<div class="shopbar"><button class="btn wide" data-a="shop">Klaar met winkelen</button></div>
+<div class="shopbar"><button class="btn wide" data-a="finish">Klaar met winkelen</button></div>
 <div id="toastHost"></div>
 <div id="popHost"></div>
+<div id="modalHost"></div>
 
 <script src="firebase-config.js"></script>
 <script>
@@ -721,16 +751,26 @@ function pick(i){
 function rowHtml(k, it, nx, pv, x){
   const P = x ? "x" : "";
   const q = it.qty || 1, bd = badge(it), ka = " data-k='" + esc(k) + "'";
-  return "<div class='row" + (it.checked ? " done" : "") + (k === flashKey ? " flash" : "") + (tick.k === k && Date.now() - tick.t < 400 ? " just" : "") + "'>" +
+  return "<div class='row" + (it.checked ? " done" : "") + (k === flashKey ? " flash" : "") + (tick.k === k && Date.now() - tick.t < 400 ? " just" : "") + "' data-row='" + esc(k) + "'" + (x ? " data-x='1'" : "") + ">" +
+    "<span class='swl' aria-hidden='true'><span>Niet gevonden</span><span>Niet gevonden</span></span><div class='rin'>" +
     "<button class='tick' data-a='" + P + "toggle'" + ka + " aria-label='" + (it.checked ? "Terugzetten" : "Afvinken") + "'><span class='c'>" + ico("check") + "</span></button>" +
     "<button class='rmain' data-a='" + P + "rowtap'" + ka + "><span class='nm'>" + esc(it.name) + "</span>" + (it.note ? "<span class='nt'>" + esc(it.note) + "</span>" : "") + "</button>" +
     (it.checked ? (bd ? "<span class='qty'>" + bd + "</span>" : "") :
       (bd ? "<span class='qty shoponly'>" + bd + "</span>" : "") +
-      (pv ? "<button class='nx' data-a='next'" + ka + " data-s='" + esc(pv.id) + "' data-n='" + esc(pv.name) + "' aria-label='Terug naar " + esc(pv.name) + "'>" + ico("arrowL") + esc(pv.name) + "</button>" : "") +
-      (nx ? "<button class='nx' data-a='next'" + ka + " data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "' aria-label='Naar " + esc(nx.name) + "'>" + ico("arrowR") + esc(nx.name) + "</button>" : "") +
       "<div class='step'><button data-a='" + P + "minus'" + ka + " aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(it) + "</b><button data-a='" + P + "plus'" + ka + " aria-label='Meer'>" + ico("plus") + "</button></div>") +
-    "</div>";
+    "</div></div>";
 }
+// Niet gevonden (alleen in de winkelmodus): tik om terug te zetten, of door naar de volgende winkel.
+function missHtml(k, it, nx, x){
+  const P = x ? "x" : "", ka = " data-k='" + esc(k) + "'", bd = badge(it);
+  return "<div class='row miss" + (k === flashKey ? " flash" : "") + "'><div class='rin'>" +
+    "<button class='rmain' data-a='" + P + "unmiss'" + ka + " style='padding-left:14px'><span class='nm'>" + esc(it.name) + (bd ? " <span class='qty'>" + bd + "</span>" : "") + "</span><span class='nt'>Tik om terug te zetten</span></button>" +
+    (nx ? "<button class='nx' data-a='missnext'" + ka + " data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "'>" + ico("arrowR") + esc(nx.name) + "</button>" : "") +
+    "</div></div>";
+}
+const listBtnHtml = cur => "<button class='ibb" + (allLists().some(([id]) => id !== cur && openCount(id) > 0) ? " dot" : "") + "' data-a='lists' aria-label='Lijsten' aria-haspopup='menu' aria-expanded='false'>" + ico("list") + "</button>";
+// In de lijstmodus: korte melding als er al iets in het karretje ligt (een winkelronde die nog niet is afgerond).
+const cartNote = n => "<div class='cartnote'><span class='grow'>" + nProd(n) + " al in het karretje</span><button class='tb' data-a='shop'>Verder winkelen</button><button class='tb' data-a='finish'>Afronden</button></div>";
 // ---------- extra lijsten (Action, Ikea, ...): eenvoudige lijstjes zonder schappen of looproute
 const curList = () => { const c = pref.get("list", "boodschappen"); return c !== "boodschappen" && S.xlists[c] ? c : "boodschappen"; };
 const xOf = l => Object.entries(S.xitems).filter(([, v]) => v.list === l).sort((a, b) => a[1].name.localeCompare(b[1].name));
@@ -748,21 +788,22 @@ function xtoggle(k, quiet){ const it = S.xitems[k]; if (!it) return; DB.set("xit
 function xremove(k){ const old = S.xitems[k]; if (!old) return; DB.del("xitems", k); toast(old.name + " verwijderd", "Ongedaan maken", () => DB.set("xitems", k, old)); }
 function xstep(k, d){ const it = S.xitems[k]; if (!it) return; const st = stepOf(it.unit); if (d < 0 && (it.qty || 1) <= st) return xremove(k); DB.inc("xitems", k, "qty", d * st); }
 function renderX(l, shop, cur){
-  const name = S.xlists[l].name, all = xOf(l), open = all.filter(([, v]) => !v.checked), done = all.filter(([, v]) => v.checked);
+  const name = S.xlists[l].name, all = xOf(l), done = all.filter(([, v]) => v.checked);
+  const open = all.filter(([, v]) => !v.checked && !(shop && v.missing)), miss = shop ? all.filter(([, v]) => !v.checked && v.missing) : [];
   $("progWrap").hidden = !all.length || !shop;
   $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
   let h = "";
+  if (!shop && done.length) h += cartNote(done.length);
   if (!all.length) h += empty("list", name + " is leeg", "Typ hierboven wat je bij " + name + " nodig hebt.");
-  else if (!open.length) h += empty("check", "Alles binnen", "Wis de afgevinkte producten om de lijst leeg te maken.") + "<div class='line center'><button class='btn' data-a='xclear'>Lijst leegmaken</button></div>";
+  else if (!open.length && !miss.length) h += empty("check", "Alles in het karretje", "Rond af om de afgevinkte producten van de lijst te halen.") + "<div class='line center'><button class='btn' data-a='finish'>Afronden</button></div>";
   if (open.length) h += "<div class='group' style='margin-top:16px'>" + open.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>";
-  if (done.length) {
+  if (miss.length) h += "<h3 class='ch'>Niet gevonden<span class='n'>" + miss.length + "</span></h3><div class='group'>" + miss.map(([k, v]) => missHtml(k, v, null, true)).join("") + "</div>";
+  if (shop && done.length) {
     done.sort((a, b) => (b[1].checkedAt || 0) - (a[1].checkedAt || 0));
-    h += "<h3 class='ch'>In het karretje<span class='n'><button data-a='xclear'>Wissen</button></span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>";
+    h += "<h3 class='ch'>In het karretje<span class='n'>" + done.length + "</span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>";
   }
   $("list").innerHTML = h; flashKey = null;
-  const others = allLists().some(([id]) => id !== cur && openCount(id) > 0);
-  const listBtn = "<button class='ibb" + (others ? " dot" : "") + "' data-a='lists' aria-label='Lijsten' aria-haspopup='menu' aria-expanded='false'>" + ico("list") + "</button>";
-  return {title:shop ? "Winkelen bij " + name : name, sub:shop && all.length ? done.length + " van " + all.length + " gepakt" : "", act:shop ? "" : listBtn + (open.length ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
+  return {title:shop ? "Winkelen bij " + name : name, sub:shop && all.length ? done.length + " van " + all.length + " gepakt" : "", act:shop ? "" : listBtnHtml(cur) + (all.some(([, v]) => !v.checked) ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
 }
 // Lijstkeuze: icoon rechtsboven, opent een klein menu met alle lijsten.
 const openCount = id => id === "boodschappen" ? Object.values(S.items).filter(v => !v.checked).length : xOf(id).filter(([, v]) => !v.checked).length;
@@ -791,37 +832,37 @@ function renderList(){
   $("q").placeholder = cur === "boodschappen" ? "Voeg toe, bv. 2 paprika" : "Voeg toe aan " + S.xlists[cur].name;
   $("demo").style.display = cur === "boodschappen" ? "" : "none";
   if (cur !== "boodschappen") return renderX(cur, shop, cur);
-  const all = Object.entries(S.items).sort((a, b) => a[1].name.localeCompare(b[1].name));
-  const open = all.filter(([, v]) => !v.checked), done = all.filter(([, v]) => v.checked);
+  const all = Object.entries(S.items).sort((a, b) => a[1].name.localeCompare(b[1].name)), done = all.filter(([, v]) => v.checked);
+  // Lijstmodus is plannen, winkelmodus is doen: afvinken en Niet gevonden bestaan alleen tijdens het winkelen.
+  const open = all.filter(([, v]) => !v.checked && !(shop && v.missing)), miss = shop ? all.filter(([, v]) => !v.checked && v.missing) : [];
   const ts = tripStores(), ids = ts.map(s => s.id), multi = ts.length > 1;
   $("progWrap").hidden = !all.length || !shop;
   $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
   let h = "";
+  if (!shop && done.length) h += cartNote(done.length);
   const due = shop ? [] : dueList();
   if (due.length) h += "<h3 class='ch'>Tijd voor<span class='n'>volgens jullie koopritme</span></h3><div class='chips'>" + due.map(p => "<span class='chip duo'><button data-a='dueadd' data-k='" + esc(p.k) + "'>" + esc(p.name) + "<small>om de " + p.r.days + " dagen</small></button><button data-a='snooze' data-k='" + esc(p.k) + "' aria-label='Nu niet'>" + ico("x") + "</button></span>").join("") + "</div>";
   if (!all.length) h += empty("list", "De lijst is leeg", "Typ hierboven wat je nodig hebt, of begin met een template of een vorige lijst.") + "<div class='line center'><button class='btn sec' data-a='nav' data-k='templates'>Templates</button><button class='btn sec' data-a='nav' data-k='vorige-lijsten'>Vorige lijsten</button></div>";
-  else if (!open.length) h += empty("check", "Alles binnen", "Wis de afgevinkte producten om het bezoek te bewaren bij Vorige lijsten.") + "<div class='line center'><button class='btn' data-a='clear'>Lijst leegmaken</button></div>";
+  else if (!open.length && !miss.length) h += empty("check", "Alles in het karretje", "Rond af om het bezoek te bewaren bij Vorige lijsten.") + "<div class='line center'><button class='btn' data-a='finish'>Afronden</button></div>";
   ts.forEach((st, si) => {
     const mine = open.filter(([k, v]) => storeOf(k, v, ids) === st.id); if (!mine.length) return;
     if (multi) h += "<div class='shead'><b>" + (si + 1) + "</b><span>" + esc(st.name) + "</span><small>" + mine.length + " te pakken</small></div>";
-    const nx = ts[si + 1] || null, pv = ts[si - 1] || null;
     for (const c of order(st)) {
-      const rows = mine.filter(([, v]) => (CAT[v.cat] ? v.cat : "overig") === c);
-      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx, pv)).join("") + "</div>";
+      const rows = mine.filter(([, v]) => catOf(v.cat) === c);
+      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v)).join("") + "</div>";
     }
   });
-  if (done.length) {
+  if (miss.length) h += "<h3 class='ch'>Niet gevonden<span class='n'>" + miss.length + "</span></h3><div class='group'>" + miss.map(([k, v]) => missHtml(k, v, ts[ids.indexOf(storeOf(k, v, ids)) + 1] || null)).join("") + "</div>";
+  if (shop && done.length) {
     done.sort((a, b) => (b[1].checkedAt || 0) - (a[1].checkedAt || 0));
-    h += "<h3 class='ch'>In het karretje<span class='n'><button data-a='clear'>Wissen</button></span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v)).join("") + "</div>";
+    h += "<h3 class='ch'>In het karretje<span class='n'>" + done.length + "</span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v)).join("") + "</div>";
   }
   $("list").innerHTML = h; flashKey = null;
-  const others = allLists().some(([id]) => id !== cur && openCount(id) > 0);
-  const listBtn = "<button class='ibb" + (others ? " dot" : "") + "' data-a='lists' aria-label='Lijsten' aria-haspopup='menu' aria-expanded='false'>" + ico("list") + "</button>";
   return {
     title: shop ? "Winkelen" : "Boodschappen",
     // Voortgang en winkelroute alleen tijdens het winkelen.
     sub: shop ? (all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst") + (ids.some(i => i !== "standaard") ? " · " + esc(ts.map(s => s.name).join(" → ")) : "") : "",
-    act: shop ? "" : listBtn + (open.length ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")
+    act: shop ? "" : listBtnHtml(cur) + (all.some(([, v]) => !v.checked) ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")
   };
 }
 
@@ -838,7 +879,7 @@ PAGES["bijna-op"] = () => {
 PAGES.templates = () => {
   const ts = Object.entries(S.templates).sort((a, b) => a[1].name.localeCompare(b[1].name)), n = Object.keys(S.items).length, st = store();
   let h = ts.length ? "<div class='group'>" + ts.map(([id, t]) => navCell("template", id, esc(t.name), nProd((t.items || []).length) + (storeName(t.store) ? " · " + esc(storeName(t.store)) : ""))).join("") + "</div>" : empty("layers", "Nog geen templates", "Maak hieronder een nieuwe template, of bewaar je huidige lijst als template.");
-  h += "<h3 class='ch'>Nieuwe template</h3><div class='line'><input class='field' id='tNew' placeholder='Naam, bv. Gourmet' enterkeyhint='done' autocapitalize='sentences' data-enter='tnew'><button class='btn' data-a='tnew'>Maken</button></div><p class='hint'>Begint leeg. Daarna voeg je de producten toe.</p>";
+  h += "<hr class='sep'><h3 class='ch'>Nieuwe template</h3><div class='line'><input class='field' id='tNew' placeholder='Naam, bv. Gourmet' enterkeyhint='done' autocapitalize='sentences' data-enter='tnew'><button class='btn' data-a='tnew'>Maken</button></div><p class='hint'>Begint leeg. Daarna voeg je de producten toe.</p>";
   h += "<h3 class='ch'>Huidige lijst bewaren als template</h3>" + (n ? "<div class='line'><input class='field' id='tName' placeholder='Naam, bv. Weekmenu' enterkeyhint='done' autocapitalize='sentences' data-enter='tsave'><button class='btn' data-a='tsave'>Bewaren</button></div>" + (st.id !== "standaard" ? "<label class='check'><input type='checkbox' id='tStore'>Alleen voor " + esc(st.name) + "</label>" : "") + "<p class='hint'>Op de lijst: " + nProd(n) + ".</p>" : "<p class='hint'>Zet eerst producten op de lijst.</p>");
   return {title:"Templates", html:h};
 };
@@ -919,7 +960,7 @@ PAGES.instellingen = () => {
     "<h3 class='ch'>Weergave</h3><div class='seg'>" + [["auto", "Systeem"], ["light", "Licht"], ["dark", "Donker"]].map(o => "<button data-a='theme' data-k='" + o[0] + "' class='" + (t === o[0] ? "on" : "") + "'>" + o[1] + "</button>").join("") + "</div><p class='hint' style='margin-top:-4px'>Geldt alleen voor dit apparaat.</p>" +
     "<h3 class='ch'>Compactheid</h3><div class='range'><input type='range' id='densIn' min='0' max='3' step='1' value='" + DENS.indexOf(pref.get("dens", "a")) + "' aria-label='Compactheid van de lijst'><div class='ticks'>" + DENS_LABEL.map((l, i) => "<span class='" + (DENS[i] === pref.get("dens", "a") ? "on" : "") + "'>" + l + "</span>").join("") + "</div></div>" +
     "<div class='group preview' aria-hidden='true'>" + [["Bananen", 1, ""], ["Gehakt", 500, "g"], ["Melk", 2, ""]].map(([n, q, un], i) => rowHtml("vb" + i, {name:n, qty:q, unit:un})).join("") + "</div>" +
-    "<p class='hint' style='margin:-4px 2px 0'>Geldt voor de lijsten op dit apparaat. De winkelmodus blijft ruim, zodat je makkelijk afvinkt.</p>" +
+    "<p class='hint' style='margin:-4px 2px 0'>Geldt voor de lijsten op dit apparaat, ook in de winkelmodus. Die blijft per stand iets ruimer, zodat je onderweg makkelijk afvinkt.</p>" +
     "<h3 class='ch'>Boodschappen</h3><div class='group'>" + navCell("schappen", undefined, "Schappen", CATS.length + " schappen", "tag") + "</div>" +
     "<h3 class='ch'>Account</h3><div class='group'>" + (user
       ? "<div class='cell'><span class='grow'>Naam</span><span class='qty'>" + esc(user.displayName || "") + "</span></div><div class='cell'><span class='grow'>E-mail</span><span class='qty'>" + esc(user.email || "") + "</span></div>"
@@ -1035,7 +1076,7 @@ const ACT = {
     leaveRow(row.closest(".row"), k, !it.checked, fn);
   },
   xtoggle:k => ACT.toggle(k, null, null, true),
-  xrowtap:k => { const it = S.xitems[k]; if (!it) return; if (it.checked || document.body.classList.contains("shop")) ACT.xtoggle(k); else go("ding", k); },
+  xrowtap:k => { const it = S.xitems[k]; if (!it) return; if (document.body.classList.contains("shop")) ACT.xtoggle(k); else go("ding", k); },
   xplus:k => xstep(k, 1), xminus:k => xstep(k, -1),
   xaddq:(k, t) => DB.inc("xitems", k, "qty", +t.dataset.d),
   xunit:(k, t) => { const it = S.xitems[k], u = t.dataset.u, from = it.unit || ""; if (u === from) return; const c = convert(it.qty || 1, from, u); DB.set("xitems", k, {unit:u, qty:c === null ? defQty(u) : c}); },
@@ -1071,7 +1112,7 @@ const ACT = {
     DB.del("xlists", k); items.forEach(([id]) => DB.del("xitems", id)); render(true);
     toast("Lijst " + old.name + " verwijderd", "Ongedaan maken", () => { DB.set("xlists", k, old); items.forEach(([id, v]) => DB.set("xitems", id, v)); });
   },
-  rowtap:k => { const it = S.items[k]; if (!it) return; if (it.checked || document.body.classList.contains("shop")) ACT.toggle(k); else go("product", k); },
+  rowtap:k => { const it = S.items[k]; if (!it) return; if (document.body.classList.contains("shop")) ACT.toggle(k); else go("product", k); },
   plus:k => step(k, 1), minus:k => step(k, -1),
   del:k => { back(); removeItem(k); },
   forget:k => { back(); DB.del("items", k); DB.del("products", k); toast("Product vergeten"); },
@@ -1083,6 +1124,10 @@ const ACT = {
     const c = convert(it.qty || 1, from, u), qty = c === null ? defQty(u) : c;
     DB.set("items", k, {unit:u, qty}); DB.set("products", k, {name:it.name, cat:it.cat, unit:u, dq:qty});
   },
+  unmiss:k => { flashKey = k; DB.set("items", k, {missing:false}); },
+  xunmiss:k => { flashKey = k; DB.set("xitems", k, {missing:false}); },
+  missnext:(k, t) => { const it = S.items[k], was = it.store || "", s = t.dataset.s; DB.set("items", k, {store:s, missing:false}); flashKey = k; toast(it.name + " bij " + t.dataset.n + " halen", "Ongedaan maken", () => DB.set("items", k, {store:was, missing:true})); },
+  finish:finish, finishok:() => { closeModal(); finishNow(); }, modalclose:closeModal,
   next:(k, t) => { const it = S.items[k], s = t.dataset.s, was = storeOf(k, it, tripStores().map(x => x.id)); flashKey = k; DB.set("items", k, {store:s}); toast(it.name + " verplaatst naar " + t.dataset.n, "Ongedaan maken", () => { flashKey = k; DB.set("items", k, {store:was}); }); },
   stoggle:(k, t) => { const it = S.items[k], on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => DB.set("products", k, {name:it.name, cat:it.cat, staple:on}), 200); },
   clear:clearDone,
@@ -1090,7 +1135,7 @@ const ACT = {
   quick:k => { const p = product(k); if (p) addItem(p.name); $("q").focus(); },
   dueadd:k => { const p = product(k); if (p) addItem(p.name); },
   snooze:k => { const p = product(k); if (!p) return; const r = rhythm(p); DB.set("products", k, {name:p.name, cat:p.cat, snooze:Date.now() + (r ? r.days : 4) * DAY / 2}); },
-  shop:() => { const on = !document.body.classList.contains("shop"); setShop(on); window.scrollTo(0, 0); if (on) toast("Tik een product aan om het af te vinken"); },
+  shop:() => { const on = !document.body.classList.contains("shop"); setShop(on); window.scrollTo(0, 0); if (on) toast("Tik om af te vinken, veeg opzij als iets er niet is"); },
   share:() => {
     const lines = [], ts = tripStores(), ids = ts.map(s => s.id), xl = curList();
     if (xl !== "boodschappen") { const r = xOf(xl).filter(([, v]) => !v.checked).map(e => e[1]); if (r.length) lines.push(S.xlists[xl].name + ":", ...r.map(v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : ""))); }
@@ -1166,6 +1211,7 @@ const ACT = {
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-a]");
   if (popOpen() && !e.target.closest(".pop") && !(t && t.dataset.a === "lists")) { closePop(); if (!t || t.closest("#barIn")) return; }
+  if (t && t.dataset.a === "modalbg") { if (e.target === t) closeModal(); return; }
   if (!t || t.disabled || !ACT[t.dataset.a]) return;
   const ae = document.activeElement;
   if (ae && ae !== t && /INPUT|SELECT/.test(ae.tagName) && (ae.id === "amtIn" || ae.id === "noteIn")) ae.blur();
@@ -1203,8 +1249,74 @@ $("q").addEventListener("input", renderSug);
 $("q").addEventListener("focus", renderSug);
 $("q").addEventListener("blur", () => setTimeout(renderSug, 180));
 $("sug").addEventListener("pointerdown", e => e.preventDefault());
-addEventListener("hashchange", () => { closePop(); onRoute(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape") closePop(); });
+addEventListener("hashchange", () => { closePop(); closeModal(); onRoute(); });
+
+/* ---------- afronden ---------- */
+function roundStats(){
+  const l = curList(), all = l === "boodschappen" ? Object.entries(S.items) : xOf(l);
+  return {l, all, done:all.filter(([, v]) => v.checked), miss:all.filter(([, v]) => !v.checked && v.missing), rest:all.filter(([, v]) => !v.checked && !v.missing)};
+}
+function finish(){
+  const r = roundStats();
+  if (!r.done.length && !r.miss.length) { setShop(false); window.scrollTo(0, 0); return; }
+  const line = (n, t, s) => "<div class='stat'><b>" + n + "</b><span class='grow'>" + t + "</span>" + (s ? "<small>" + s + "</small>" : "") + "</div>";
+  $("modalHost").innerHTML = "<div class='modal' data-a='modalbg'><div class='mcard' role='dialog' aria-label='Klaar met winkelen'><h2>Klaar met winkelen</h2>" +
+    line(r.done.length, r.done.length === 1 ? "product gepakt" : "producten gepakt", r.l === "boodschappen" ? "naar Vorige lijsten" : "van de lijst") +
+    (r.miss.length ? line(r.miss.length, "niet gevonden", "blijven op de lijst") : "") +
+    (r.rest.length ? line(r.rest.length, "nog niet gepakt", "blijven op de lijst") : "") +
+    "<div class='line' style='margin-top:18px'><button class='btn sec grow' data-a='modalclose'>Verder winkelen</button><button class='btn grow' data-a='finishok'>Afronden</button></div></div></div>";
+}
+function closeModal(){ const m = $("modalHost").firstChild; if (!m) return; m.classList.add("out"); setTimeout(() => { if ($("modalHost").firstChild === m) $("modalHost").innerHTML = ""; }, 160); }
+function finishNow(){
+  const r = roundStats(), col = r.l === "boodschappen" ? "items" : "xitems";
+  r.miss.forEach(([k]) => DB.set(col, k, {missing:false}));
+  setShop(false, true); window.scrollTo(0, 0);
+  if (r.l === "boodschappen") clearDone(); else ACT.xclear();
+  render(true);
+}
+
+/* ---------- vegen in de winkelmodus: Niet gevonden ---------- */
+let sw = null, swallowUntil = 0;
+document.addEventListener("click", e => { if (Date.now() < swallowUntil) { e.stopPropagation(); e.preventDefault(); } }, true);
+document.addEventListener("pointerdown", e => {
+  if (!document.body.classList.contains("shop") || e.button > 0 || sw) return;
+  const row = e.target.closest("#list .row[data-row]"); if (!row || row.classList.contains("done") || leaving.has(row.dataset.row)) return;
+  sw = {row, rin:row.querySelector(".rin"), k:row.dataset.row, x:!!row.dataset.x, id:e.pointerId, x0:e.clientX, y0:e.clientY, dx:0, on:false, w:row.offsetWidth};
+});
+document.addEventListener("pointermove", e => {
+  if (!sw || e.pointerId !== sw.id) return;
+  const dx = e.clientX - sw.x0, dy = e.clientY - sw.y0;
+  if (!sw.on) {
+    if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { sw = null; return; }
+    if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
+    sw.on = true; sw.row.classList.add("swiping"); try { sw.row.setPointerCapture(e.pointerId); } catch {}
+  }
+  sw.dx = dx; const past = Math.abs(dx) > sw.w * .3;
+  sw.rin.style.transform = "translateX(" + dx + "px)";
+  sw.row.classList.toggle("sl", dx > 0); sw.row.classList.toggle("sr", dx < 0);
+  if (past !== sw.past) { sw.past = past; sw.row.classList.toggle("go", past); if (past) try { navigator.vibrate && navigator.vibrate(6); } catch {} }
+});
+function endSwipe(e){
+  if (!sw || (e && e.pointerId !== sw.id)) return;
+  const s = sw; sw = null; if (!s.on) return;
+  swallowUntil = Date.now() + 350;
+  s.rin.style.transition = "transform .2s var(--ease)";
+  if (Math.abs(s.dx) > s.w * .3) {
+    s.rin.style.transform = "translateX(" + (s.dx > 0 ? s.w : -s.w) + "px)";
+    const col = s.x ? "xitems" : "items";
+    setTimeout(() => leaveRow(s.row, s.k, false, k => {
+      const it = S[col][k]; if (!it) return;
+      DB.set(col, k, {missing:true});
+      toast(it.name + " niet gevonden", "Ongedaan maken", () => DB.set(col, k, {missing:false}));
+    }), 180);
+  } else {
+    s.rin.style.transform = "";
+    setTimeout(() => { s.row.classList.remove("swiping", "sl", "sr", "go"); s.rin.style.transition = ""; }, 200);
+  }
+}
+document.addEventListener("pointerup", endSwipe);
+document.addEventListener("pointercancel", e => { if (sw && sw.on) { sw.dx = 0; endSwipe(e); } else sw = null; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closePop(); closeModal(); } });
 addEventListener("resize", closePop);
 
 /* ---------- slepen in de looproute ---------- */
