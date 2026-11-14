@@ -734,7 +734,7 @@ function xremove(k){ const old = S.xitems[k]; if (!old) return; DB.del("xitems",
 function xstep(k, d){ const it = S.xitems[k]; if (!it) return; const st = stepOf(it.unit); if (d < 0 && (it.qty || 1) <= st) return xremove(k); DB.inc("xitems", k, "qty", d * st); }
 function renderX(l, shop, cur){
   const name = S.xlists[l].name, all = xOf(l), open = all.filter(([, v]) => !v.checked), done = all.filter(([, v]) => v.checked);
-  $("progWrap").hidden = !all.length;
+  $("progWrap").hidden = !all.length || !shop;
   $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
   let h = "";
   if (!all.length) h += empty("list", name + " is leeg", "Typ hierboven wat je bij " + name + " nodig hebt.");
@@ -747,7 +747,7 @@ function renderX(l, shop, cur){
   $("list").innerHTML = h; flashKey = null;
   const others = allLists().some(([id]) => id !== cur && openCount(id) > 0);
   const listBtn = "<button class='ibb" + (others ? " dot" : "") + "' data-a='lists' aria-label='Lijsten' aria-haspopup='menu' aria-expanded='false'>" + ico("list") + "</button>";
-  return {title:shop ? "Winkelen bij " + name : name, sub:all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst", act:shop ? "" : listBtn + (open.length ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
+  return {title:shop ? "Winkelen bij " + name : name, sub:shop && all.length ? done.length + " van " + all.length + " gepakt" : "", act:shop ? "" : listBtn + (open.length ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
 }
 // Lijstkeuze: icoon rechtsboven, opent een klein menu met alle lijsten.
 const openCount = id => id === "boodschappen" ? Object.values(S.items).filter(v => !v.checked).length : xOf(id).filter(([, v]) => !v.checked).length;
@@ -779,7 +779,7 @@ function renderList(){
   const all = Object.entries(S.items).sort((a, b) => a[1].name.localeCompare(b[1].name));
   const open = all.filter(([, v]) => !v.checked), done = all.filter(([, v]) => v.checked);
   const ts = tripStores(), ids = ts.map(s => s.id), multi = ts.length > 1;
-  $("progWrap").hidden = !all.length;
+  $("progWrap").hidden = !all.length || !shop;
   $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
   let h = "";
   const due = shop ? [] : dueList();
@@ -804,7 +804,8 @@ function renderList(){
   const listBtn = "<button class='ibb" + (others ? " dot" : "") + "' data-a='lists' aria-label='Lijsten' aria-haspopup='menu' aria-expanded='false'>" + ico("list") + "</button>";
   return {
     title: shop ? "Winkelen" : "Boodschappen",
-    sub: (all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst") + (ids.some(i => i !== "standaard") ? " · <button data-a='nav' data-k='winkels'>" + esc(ts.map(s => s.name).join(" → ")) + "</button>" : ""),
+    // Voortgang en winkelroute alleen tijdens het winkelen.
+    sub: shop ? (all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst") + (ids.some(i => i !== "standaard") ? " · " + esc(ts.map(s => s.name).join(" → ")) : "") : "",
     act: shop ? "" : listBtn + (open.length ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")
   };
 }
