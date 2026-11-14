@@ -78,13 +78,23 @@ h1,h2,h3,p{margin:0}
 .prog{height:3px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:10px}
 .prog i{display:block;height:100%;width:0;background:var(--acc);border-radius:3px;transition:width .4s var(--ease)}
 
-.lists{display:flex;gap:8px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none}
-.lists::-webkit-scrollbar{display:none}
-.lists .chip{flex:none;min-height:34px;padding:0 13px}
-.lists .chip small{margin-left:0;font-variant-numeric:tabular-nums}
-.lists .chip.on small{color:inherit;opacity:.75}
-.lists .chip.new{border-style:dashed;color:var(--mute)}
-body.shop .lists{display:none}
+.ibb{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:var(--surface);color:var(--q1);flex:none;position:relative;transition:transform .15s,background-color .15s,border-color .15s}
+.ibb .i{width:20px;height:20px}
+.ibb:active{transform:scale(.93)}
+.ibb.on{background:var(--soft);border-color:transparent}
+.ibb.dot::after{content:"";position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--q2);box-shadow:0 0 0 2px var(--surface)}
+.barin .ibb+.ibb{margin-left:2px}
+.pop{position:fixed;z-index:25;min-width:220px;max-width:calc(100vw - 24px);max-height:60vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 12px 36px rgba(0,0,0,.18);transform-origin:top right;animation:popin .16s var(--ease)}
+.pop.out{animation:popout .14s ease-in forwards}
+@keyframes popin{from{opacity:0;transform:scale(.94) translateY(-4px)}}
+@keyframes popout{to{opacity:0;transform:scale(.96) translateY(-3px)}}
+.popi{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:0 10px;border-radius:9px;font-size:15px;transition:background-color .12s}
+.popi:active{background:var(--fill)}
+.popi.on{color:var(--acc);font-weight:500}
+.popi .pc{width:18px;display:grid;place-items:center;flex:none}
+.popi .pc .i{width:17px;height:17px}
+.popi .pn{font-size:13px;color:var(--q2);font-variant-numeric:tabular-nums;font-weight:500}
+.popsep{height:1px;background:var(--line);margin:6px 4px}
 .inl.left{text-align:left}
 
 /* pagina-overgangen */
@@ -233,7 +243,7 @@ body:not(.shop) .shoponly,body:not(.shop) .nx,body:not(.shop) .shopbar{display:n
 @keyframes tin{from{opacity:0;transform:translate(-50%,10px)}}
 .toast button{font-weight:600;white-space:nowrap;color:inherit;text-decoration:underline;text-underline-offset:3px}
 .gate{position:fixed;inset:0;z-index:40;background:var(--bg);display:grid;place-items:center;padding:24px;text-align:center}
-.gate .logo{width:60px;height:60px;border-radius:17px;background:#a9cdf1;color:#17457f;display:grid;place-items:center;margin:0 auto 20px}
+.gate .logo{width:64px;height:64px;border-radius:18px;background:url(data:image/png;base64,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) center/cover;box-shadow:0 6px 20px rgba(23,60,115,.18);margin:0 auto 20px}
 .gate .logo .i{width:28px;height:28px;stroke-width:1.8}
 .gate h1{font-size:24px;font-weight:600;letter-spacing:-.015em;margin-bottom:6px}
 .gate p{color:var(--mute);max-width:300px;margin:0 auto 24px;font-size:15px}
@@ -255,7 +265,6 @@ body:not(.shop) .shoponly,body:not(.shop) .nx,body:not(.shop) .shopbar{display:n
 <header class="top" id="top"><div class="wrap">
   <div class="barin" id="barIn"></div>
   <div id="listHead" hidden>
-    <div class="lists" id="listTabs"></div>
     <form class="add" id="addForm" autocomplete="off">
       <span id="addIco"></span>
       <input id="q" type="text" enterkeyhint="done" autocapitalize="sentences" placeholder="Voeg toe, bv. 2 paprika" aria-label="Product toevoegen">
@@ -278,6 +287,7 @@ body:not(.shop) .shoponly,body:not(.shop) .nx,body:not(.shop) .shopbar{display:n
 <nav class="tabs"><div id="tabs"></div></nav>
 <div class="shopbar"><button class="btn wide" data-a="shop">Klaar met winkelen</button></div>
 <div id="toastHost"></div>
+<div id="popHost"></div>
 
 <script src="firebase-config.js"></script>
 <script>
@@ -293,6 +303,17 @@ const CATS = [
  ["dieren","🐾","Huisdieren"],["overig","🛒","Overig"]];
 const CAT = Object.fromEntries(CATS.map(c => [c[0], {id:c[0], ico:c[1], name:c[2]}]));
 const DEFAULT_ORDER = CATS.map(c => c[0]);
+// Schappen zijn aan te passen in Instellingen: eigen naam en emoji, verbergen, of eigen schappen erbij.
+const CATS_BASE = CATS.map(c => c.slice());
+const catOf = c => CAT[c] ? c : "overig";
+function rebuildCats(){
+  const o = S.cats || {}, list = [];
+  CATS_BASE.forEach(([id, ico, name]) => { const x = o[id] || {}; if (x.hidden && id !== "overig") return; list.push([id, x.ico || ico, x.name || name]); });
+  Object.entries(o).filter(([, x]) => x.custom && x.name).sort((a, b) => (a[1].at || 0) - (b[1].at || 0)).forEach(([id, x]) => list.splice(list.length - 1, 0, [id, x.ico || "🏷️", x.name]));
+  CATS.length = 0; list.forEach(c => CATS.push(c));
+  Object.keys(CAT).forEach(k => delete CAT[k]); CATS.forEach(c => { CAT[c[0]] = {id:c[0], ico:c[1], name:c[2]}; });
+  DEFAULT_ORDER.length = 0; CATS.forEach(c => DEFAULT_ORDER.push(c[0]));
+}
 const CATALOG_SRC = {
  groente:"Appels,Bananen,Peren,Sinaasappels,Mandarijnen,Citroen,Limoen,Druiven,Aardbeien,Blauwe bessen,Frambozen,Kiwi,Mango,Ananas,Meloen,Avocado,Tomaten,Cherrytomaten,Komkommer,Paprika,Courgette,Aubergine,Broccoli,Bloemkool,Spinazie,Sla,Rucola,Wortels,Ui,Rode ui,Knoflook,Prei,Champignons,Aardappelen,Zoete aardappel,Sperziebonen,Spruitjes,Boerenkool,Witlof,Bosui,Gember,Rode peper,Verse basilicum,Verse peterselie,Koriander,Mais,Pompoen,Venkel,Radijs,Bleekselderij,Rode kool,Witte kool,Paksoi,Taugé,Snoeptomaatjes",
  brood:"Brood,Volkorenbrood,Wit brood,Bruin brood,Krentenbollen,Croissants,Afbakbroodjes,Pistoletjes,Stokbrood,Tortilla wraps,Pitabroodjes,Beschuit,Crackers,Knäckebröd,Roggebrood,Ontbijtkoek,Bolletjes,Naanbrood",
@@ -361,8 +382,8 @@ for (const [cat, list] of Object.entries(CATALOG_SRC)) for (const name of list.s
 
 /* ---------- toestand ---------- */
 const LIST = "boodschappen";
-const PATH = {items:"lists/" + LIST + "/items", products:"products", stores:"stores", templates:"templates", history:"history", xlists:"xlists", xitems:"xitems"};
-const S = {items:{}, products:{}, stores:{}, templates:{}, history:{}, xlists:{}, xitems:{}};
+const PATH = {items:"lists/" + LIST + "/items", products:"products", stores:"stores", templates:"templates", history:"history", xlists:"xlists", xitems:"xitems", cats:"cats"};
+const S = {items:{}, products:{}, stores:{}, templates:{}, history:{}, xlists:{}, xitems:{}, cats:{}};
 let DB = null, user = null, ready = false, sheet = null, flashKey = null, wake = null;
 let trip = []; try { trip = JSON.parse(pref.get("trip", "[]")) || []; } catch {}
 const DAY = 864e5;
@@ -563,6 +584,7 @@ const IC = {
   clock:"<circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/>",
   share:"<path d='M12 15V3M8 7l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7'/>",
   grip:"<path d='M5 8h14M5 12h14M5 16h14'/>",
+  chevD:"<path d='m7 10 5 5 5-5'/>", tag:"<path d='M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z'/><circle cx='8' cy='8' r='1.4'/>", edit:"<path d='M4 20h4L19 9l-4-4L4 16z'/>",
   sliders:"<path d='M4 7h10M18 7h2M4 17h2M10 17h10'/><circle cx='16' cy='7' r='2'/><circle cx='8' cy='17' r='2'/>"
 };
 const ico = n => "<svg class='i' viewBox='0 0 24 24' aria-hidden='true'>" + IC[n] + "</svg>";
@@ -578,8 +600,8 @@ try { mq.addEventListener("change", applyTheme); } catch {}
 
 /* ---------- navigatie ---------- */
 const TABS = [["lijst", "Lijst", "list"], ["bijna-op", "Bijna op", "home"], ["templates", "Templates", "layers"], ["meer", "Meer", "more"]];
-const PARENT = {ding:"lijst", lijsten:"lijst", winkels:"meer", "vorige-lijsten":"meer", instellingen:"meer", looproute:"winkels", template:"templates", bezoek:"vorige-lijsten", product:"lijst"};
-const NEEDS = {ding:1, looproute:1, template:1, bezoek:1, product:1};
+const PARENT = {schappen:"instellingen", schap:"schappen", ding:"lijst", lijsten:"lijst", winkels:"meer", "vorige-lijsten":"meer", instellingen:"meer", looproute:"winkels", template:"templates", bezoek:"vorige-lijsten", product:"lijst"};
+const NEEDS = {schap:1, ding:1, looproute:1, template:1, bezoek:1, product:1};
 const PAGES = {}, args = {}, scrolls = {};
 let route = null, depth = 0, navDir = "", tick = {k:"", t:0};
 const hashName = () => { try { return decodeURIComponent(location.hash.slice(1)) || "lijst"; } catch { return "lijst"; } };
@@ -669,7 +691,7 @@ function renderSug(){
     const what = arg.explicit ? badge(arg) : (r.unit && r.dq ? amount({qty:r.dq, unit:r.unit}) : "");
     const right = r.isNew ? "<small>" + (what ? esc(what) + " · " : "") + "Nieuw product</small>"
       : it ? "<small class='inc'>Staat er al · " + amount(it) + (d === null ? "" : " → " + amount({qty:(it.qty || 1) + d, unit:it.unit})) + "</small>"
-      : "<small>" + (what ? esc(what) + " · " : "") + esc(CAT[r.cat].name) + "</small>";
+      : "<small>" + (what ? esc(what) + " · " : "") + esc(CAT[catOf(r.cat)].name) + "</small>";
     return "<button type='button' class='s" + (i === enterIdx ? " enter" : "") + "' data-a='pick' data-k='" + i + "'><span class='grow'>" + esc(r.name) + "</span>" + right + "</button>";
   }).join("");
   box.hidden = false;
@@ -710,7 +732,7 @@ function xadd(rawName, a){
 function xtoggle(k, quiet){ const it = S.xitems[k]; if (!it) return; DB.set("xitems", k, {checked:!it.checked, checkedAt:Date.now()}); if (!quiet) try { navigator.vibrate && navigator.vibrate(8); } catch {} }
 function xremove(k){ const old = S.xitems[k]; if (!old) return; DB.del("xitems", k); toast(old.name + " verwijderd", "Ongedaan maken", () => DB.set("xitems", k, old)); }
 function xstep(k, d){ const it = S.xitems[k]; if (!it) return; const st = stepOf(it.unit); if (d < 0 && (it.qty || 1) <= st) return xremove(k); DB.inc("xitems", k, "qty", d * st); }
-function renderX(l, shop){
+function renderX(l, shop, cur){
   const name = S.xlists[l].name, all = xOf(l), open = all.filter(([, v]) => !v.checked), done = all.filter(([, v]) => v.checked);
   $("progWrap").hidden = !all.length;
   $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
@@ -723,21 +745,37 @@ function renderX(l, shop){
     h += "<h3 class='ch'>In het karretje<span class='n'><button data-a='xclear'>Wissen</button></span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>";
   }
   $("list").innerHTML = h; flashKey = null;
-  return {title:shop ? "Winkelen bij " + name : name, sub:all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst", act:shop || !open.length ? "" : "<button class='pill' data-a='shop'>" + ico("cart") + "Winkelen</button>"};
+  const others = allLists().some(([id]) => id !== cur && openCount(id) > 0);
+  const listBtn = "<button class='ibb" + (others ? " dot" : "") + "' data-a='lists' aria-label='Lijsten' aria-haspopup='menu' aria-expanded='false'>" + ico("list") + "</button>";
+  return {title:shop ? "Winkelen bij " + name : name, sub:all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst", act:shop ? "" : listBtn + (open.length ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
 }
-function renderListTabs(cur){
-  const box = $("listTabs"), sl = box.scrollLeft, n0 = Object.values(S.items).filter(v => !v.checked).length;
-  const chip = (id, name, n) => "<button class='chip" + (id === cur ? " on" : "") + "' data-a='setlist' data-k='" + esc(id) + "'>" + esc(name) + (n ? "<small>" + n + "</small>" : "") + "</button>";
-  box.innerHTML = chip("boodschappen", "Boodschappen", n0) + Object.entries(S.xlists).sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([id, l]) => chip(id, l.name, xOf(id).filter(([, v]) => !v.checked).length)).join("") +
-    "<button class='chip new' data-a='nav' data-k='lijsten'>" + ico("plus") + "Lijst</button>";
-  box.scrollLeft = sl;
+// Lijstkeuze: icoon rechtsboven, opent een klein menu met alle lijsten.
+const openCount = id => id === "boodschappen" ? Object.values(S.items).filter(v => !v.checked).length : xOf(id).filter(([, v]) => !v.checked).length;
+const allLists = () => [["boodschappen", "Boodschappen"]].concat(Object.entries(S.xlists).sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([id, l]) => [id, l.name]));
+function popHtml(){
+  const cur = curList();
+  return "<div class='pop' role='menu'>" + allLists().map(([id, n]) => { const c = openCount(id); return "<button class='popi" + (id === cur ? " on" : "") + "' data-a='setlist' data-k='" + esc(id) + "' role='menuitemradio' aria-checked='" + (id === cur) + "'><span class='pc'>" + (id === cur ? ico("check") : "") + "</span><span class='grow'>" + esc(n) + "</span>" + (c ? "<span class='pn'>" + c + "</span>" : "") + "</button>"; }).join("") +
+    "<div class='popsep'></div><button class='popi' data-a='newlist'><span class='pc'>" + ico("plus") + "</span><span class='grow'>Nieuwe lijst</span></button><button class='popi' data-a='nav' data-k='lijsten'><span class='pc'>" + ico("edit") + "</span><span class='grow'>Lijsten beheren</span></button></div>";
 }
+function openPop(){
+  const btn = document.querySelector("#barIn [data-a=lists]"); if (!btn) return;
+  const r = btn.getBoundingClientRect(), host = $("popHost");
+  host.innerHTML = popHtml();
+  const p = host.firstChild;
+  p.style.top = (r.bottom + 6) + "px"; p.style.right = Math.max(12, window.innerWidth - r.right) + "px";
+  btn.classList.add("on"); btn.setAttribute("aria-expanded", "true");
+}
+function closePop(){
+  const host = $("popHost"), p = host.firstChild; if (!p) return;
+  const btn = document.querySelector("#barIn [data-a=lists]"); if (btn) { btn.classList.remove("on"); btn.setAttribute("aria-expanded", "false"); }
+  p.classList.add("out"); setTimeout(() => { if (host.firstChild === p) host.innerHTML = ""; }, 140);
+}
+const popOpen = () => !!($("popHost").firstChild && !$("popHost").firstChild.classList.contains("out"));
 function renderList(){
   const shop = document.body.classList.contains("shop"), cur = curList();
-  renderListTabs(cur);
   $("q").placeholder = cur === "boodschappen" ? "Voeg toe, bv. 2 paprika" : "Voeg toe aan " + S.xlists[cur].name;
   $("demo").style.display = cur === "boodschappen" ? "" : "none";
-  if (cur !== "boodschappen") return renderX(cur, shop);
+  if (cur !== "boodschappen") return renderX(cur, shop, cur);
   const all = Object.entries(S.items).sort((a, b) => a[1].name.localeCompare(b[1].name));
   const open = all.filter(([, v]) => !v.checked), done = all.filter(([, v]) => v.checked);
   const ts = tripStores(), ids = ts.map(s => s.id), multi = ts.length > 1;
@@ -762,10 +800,12 @@ function renderList(){
     h += "<h3 class='ch'>In het karretje<span class='n'><button data-a='clear'>Wissen</button></span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v)).join("") + "</div>";
   }
   $("list").innerHTML = h; flashKey = null;
+  const others = allLists().some(([id]) => id !== cur && openCount(id) > 0);
+  const listBtn = "<button class='ibb" + (others ? " dot" : "") + "' data-a='lists' aria-label='Lijsten' aria-haspopup='menu' aria-expanded='false'>" + ico("list") + "</button>";
   return {
     title: shop ? "Winkelen" : "Boodschappen",
     sub: (all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst") + (ids.some(i => i !== "standaard") ? " · <button data-a='nav' data-k='winkels'>" + esc(ts.map(s => s.name).join(" → ")) + "</button>" : ""),
-    act: shop || !open.length ? "" : "<button class='pill' data-a='shop'>" + ico("cart") + "Winkelen</button>"
+    act: shop ? "" : listBtn + (open.length ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")
   };
 }
 
@@ -773,7 +813,7 @@ function renderList(){
 PAGES["bijna-op"] = () => {
   const edit = !!args.stEdit, st = allProducts().filter(p => p.staple).sort(byName);
   let h = st.length ? "<p class='lead'>" + (edit ? "Tik op een product om het uit dit overzicht te halen." : "Tik aan wat thuis bijna op is. Het staat dan direct op de boodschappenlijst.") + "</p>" : empty("home", "Nog geen vaste producten", "Voeg hieronder toe wat jullie altijd in huis willen hebben.");
-  for (const c of DEFAULT_ORDER) { const r = st.filter(p => p.cat === c); if (r.length) h += catHead(c) + "<div class='chips'>" + r.map(p => "<button class='chip" + (!edit && onList(p.k) ? " on" : "") + "' data-a='staple' data-k='" + esc(p.k) + "'>" + esc(p.name) + (edit ? ico("x") : "") + "</button>").join("") + "</div>"; }
+  for (const c of DEFAULT_ORDER) { const r = st.filter(p => catOf(p.cat) === c); if (r.length) h += catHead(c) + "<div class='chips'>" + r.map(p => "<button class='chip" + (!edit && onList(p.k) ? " on" : "") + "' data-a='staple' data-k='" + esc(p.k) + "'>" + esc(p.name) + (edit ? ico("x") : "") + "</button>").join("") + "</div>"; }
   const sug = allProducts().filter(p => !p.staple && p.n >= 2).sort((a, b) => b.n - a.n).slice(0, 8);
   h += "<h3 class='ch'>Vast product toevoegen</h3><div class='line'><input class='field' id='stName' placeholder='bv. Olijfolie' enterkeyhint='done' data-enter='stnew'><button class='btn' data-a='stnew'>Toevoegen</button></div>" +
     (sug.length ? "<h3 class='ch'>Vaak gekocht</h3><div class='chips'>" + sug.map(p => "<button class='chip' data-a='stadd' data-k='" + esc(p.k) + "'>" + ico("plus") + esc(p.name) + "</button>").join("") + "</div>" : "");
@@ -833,10 +873,33 @@ PAGES.looproute = () => {
     ord.map(c => "<div class='cell" + (mv === c ? " flash" : "") + "'><span class='em'>" + CAT[c].ico + "</span><span class='grow'>" + esc(CAT[c].name) + "</span><span class='grip' aria-hidden='true'>" + ico("grip") + "</span></div>").join("") + "</div>" +
     (st.id !== "standaard" ? "<button class='btn text danger wide' data-a='sdel'>Winkel verwijderen</button>" : "<p class='hint'>De standaardwinkel kun je hernoemen, maar niet verwijderen.</p>")};
 };
+PAGES.schappen = () => {
+  const o = S.cats || {}, hidden = CATS_BASE.filter(c => o[c[0]] && o[c[0]].hidden);
+  return {title:"Schappen", html:
+    "<p class='lead'>Pas de naam of emoji van een schap aan, verberg schappen die je niet gebruikt, of maak eigen schappen. De volgorde stel je per winkel in bij de looproute.</p>" +
+    "<div class='group'>" + CATS.map(c => navCell("schap", c[0], "<span class='em' style='margin-right:10px'>" + c[1] + "</span>" + esc(c[2]), o[c[0]] && o[c[0]].custom ? "Eigen schap" : "")).join("") + "</div>" +
+    (hidden.length ? "<h3 class='ch'>Verborgen</h3><div class='group'>" + hidden.map(c => navCell("schap", c[0], "<span class='em' style='margin-right:10px;opacity:.5'>" + ((o[c[0]] && o[c[0]].ico) || c[1]) + "</span>" + esc((o[c[0]] && o[c[0]].name) || c[2]), "Verborgen")).join("") + "</div>" : "") +
+    "<h3 class='ch'>Schap toevoegen</h3><div class='line'><input class='field' id='catIco' style='flex:0 0 58px;text-align:center;padding:0' maxlength='4' placeholder='🏷️' aria-label='Emoji'><input class='field' id='catName' placeholder='bv. Feestartikelen' enterkeyhint='done' autocapitalize='sentences' data-enter='catadd'><button class='btn' data-a='catadd'>Toevoegen</button></div>" +
+    "<p class='hint'>Producten in een verborgen of verwijderd schap komen onder Overig te staan.</p>"};
+};
+PAGES.schap = () => {
+  const id = args.schap, o = (S.cats || {})[id] || {}, base = CATS_BASE.find(c => c[0] === id);
+  if (!base && !o.custom) return gone();
+  const name = o.name || (base && base[2]), icon = o.ico || (base && base[1]) || "🏷️", n = Object.values(S.items).filter(v => v.cat === id).length + Object.values(S.products).filter(p => p.cat === id).length;
+  const ka = " data-k='" + esc(id) + "'", changed = base && (o.name || o.ico);
+  return {title:name, html:
+    "<div class='group'><label class='cell'><span class='lbl'>Naam</span><input class='inl grow' id='catNameIn'" + ka + " value='" + esc(name) + "' enterkeyhint='done'></label>" +
+    "<label class='cell'><span class='grow'>Emoji</span><input class='inl' id='catIcoIn'" + ka + " value='" + esc(icon) + "' maxlength='4' style='width:60px;font-size:20px'></label>" +
+    (base && id !== "overig" ? "<div class='cell'><span class='grow'><span class='ct'>Tonen</span><span class='cs'>Verborgen schappen verdwijnen uit keuzelijsten en looproutes</span></span><button class='sw" + (o.hidden ? "" : " on") + "' data-a='cathide'" + ka + " role='switch' aria-checked='" + !o.hidden + "' aria-label='Tonen'><i></i></button></div>" : "") + "</div>" +
+    (id === "overig" ? "<p class='hint' style='margin:-4px 2px 18px'>Overig kun je niet verbergen: hier komen producten zonder passend schap.</p>" : "") +
+    (changed ? "<button class='btn text wide' data-a='catreset'" + ka + ">Oorspronkelijke naam en emoji terugzetten</button>" : "") +
+    (o.custom ? "<button class='btn text danger wide' data-a='catdel'" + ka + ">Schap verwijderen</button>" : "")};
+};
 PAGES.instellingen = () => {
   const t = pref.get("theme", "auto");
   return {title:"Instellingen", html:
     "<h3 class='ch'>Weergave</h3><div class='seg'>" + [["auto", "Systeem"], ["light", "Licht"], ["dark", "Donker"]].map(o => "<button data-a='theme' data-k='" + o[0] + "' class='" + (t === o[0] ? "on" : "") + "'>" + o[1] + "</button>").join("") + "</div><p class='hint' style='margin-top:-4px'>Geldt alleen voor dit apparaat.</p>" +
+    "<h3 class='ch'>Boodschappen</h3><div class='group'>" + navCell("schappen", undefined, "Schappen", CATS.length + " schappen", "tag") + "</div>" +
     "<h3 class='ch'>Account</h3><div class='group'>" + (user
       ? "<div class='cell'><span class='grow'>Naam</span><span class='qty'>" + esc(user.displayName || "") + "</span></div><div class='cell'><span class='grow'>E-mail</span><span class='qty'>" + esc(user.email || "") + "</span></div>"
       : "<div class='cell'><span class='grow'><span class='ct'>Demomodus</span><span class='cs'>Niet gekoppeld, alles staat alleen in deze browser</span></span></div>") + "</div>" +
@@ -870,7 +933,7 @@ PAGES.product = () => {
     "<div class='seg'>" + UNIT_LABEL.map(u => "<button data-a='setunit'" + ka + " data-u='" + u[0] + "' class='" + ((it.unit || "") === u[0] ? "on" : "") + "'>" + u[1] + "</button>").join("") + "</div>" +
     "<div class='group'><label class='cell'><span class='grow'>Precies aantal</span><input class='inl' id='amtIn'" + ka + " inputmode='decimal' value='" + fmt(it.qty || 1) + "'></label>" +
     "<label class='cell'><span class='lbl'>Notitie</span><input class='inl grow' id='noteIn'" + ka + " value='" + esc(it.note) + "' placeholder='bv. merk of rijpheid' enterkeyhint='done'></label></div>" +
-    "<div class='group'><label class='cell'><span class='grow'>Schap</span><select id='catSel'" + ka + ">" + CATS.map(c => "<option value='" + c[0] + "'" + (it.cat === c[0] ? " selected" : "") + ">" + c[1] + " " + esc(c[2]) + "</option>").join("") + "</select>" + ico("down") + "</label>" +
+    "<div class='group'><label class='cell'><span class='grow'>Schap</span><select id='catSel'" + ka + ">" + CATS.map(c => "<option value='" + c[0] + "'" + (catOf(it.cat) === c[0] ? " selected" : "") + ">" + c[1] + " " + esc(c[2]) + "</option>").join("") + "</select>" + ico("down") + "</label>" +
     (shops.length ? "<label class='cell'><span class='grow'>Kopen bij</span><select id='storeSel'" + ka + "><option value=''>Maakt niet uit</option>" + shops.map(s => "<option value='" + esc(s.id) + "'" + (cs === s.id ? " selected" : "") + ">" + esc(s.name) + "</option>").join("") + "</select>" + ico("down") + "</label>" : "") +
     "<div class='cell'><span class='grow'><span class='ct'>Bijna op</span><span class='cs'>Vast product dat je thuis snel aantikt</span></span><button class='sw" + (staple ? " on" : "") + "' data-a='stoggle'" + ka + " role='switch' aria-checked='" + staple + "' aria-label='Bijna op'><i></i></button></div></div>" +
     "<p class='hint' style='margin:-4px 2px 18px'>Schap, winkel en eenheid worden onthouden voor de volgende keer." + (it.by ? " Toegevoegd door " + esc(it.by) + "." : "") + "</p>" +
@@ -899,6 +962,7 @@ function leaveRow(row, k, checking, fn){
 }
 function render(force){
   if (!ready || !route || dragLock) return;
+  rebuildCats();
   if (hold > 0) { pending = true; return; }
   const isList = route === "lijst";
   $("pgList").hidden = !isList; $("listHead").hidden = !isList; $("page").hidden = isList;
@@ -961,7 +1025,19 @@ const ACT = {
     done.forEach(([k]) => DB.del("xitems", k));
     toast(nProd(done.length) + " gewist", "Ongedaan maken", () => done.forEach(([k, v]) => DB.set("xitems", k, v)));
   },
-  setlist:k => { if (k === curList()) return; pref.set("list", k); $("q").value = ""; setShop(false, true); render(true); window.scrollTo(0, 0); const m = $("pgList"); m.classList.remove("swap"); void m.offsetWidth; m.classList.add("swap"); },
+  catadd:() => {
+    const inp = $("catName"), name = inp.value.trim(); if (!name) return inp.focus();
+    const ic = $("catIco").value.trim(), id = "c-" + keyOf(name).replace(/ /g, "-");
+    if (CAT[id] || CATS_BASE.some(c => c[0] === id)) return toast("Dat schap bestaat al");
+    inp.value = ""; $("catIco").value = ""; inp.blur();
+    DB.set("cats", id, {custom:true, name, ico:ic || "🏷️", at:Date.now()}); toast("Schap " + name + " toegevoegd"); render(true);
+  },
+  cathide:(k, t) => { const on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => DB.set("cats", k, {hidden:!on}), 200); },
+  catreset:k => { const o = S.cats[k] || {}; DB.set("cats", k, {...o, name:"", ico:""}); render(true); },
+  catdel:k => { const old = S.cats[k]; if (!old) return; back(); DB.del("cats", k); toast("Schap " + old.name + " verwijderd", "Ongedaan maken", () => DB.set("cats", k, old)); },
+  lists:() => popOpen() ? closePop() : openPop(),
+  newlist:() => { closePop(); go("lijsten"); setTimeout(() => { const i = $("lName"); if (i) i.focus(); }, 300); },
+  setlist:k => { closePop(); if (k === curList()) return; pref.set("list", k); $("q").value = ""; setShop(false, true); render(true); window.scrollTo(0, 0); const m = $("pgList"); m.classList.remove("swap"); void m.offsetWidth; m.classList.add("swap"); },
   ladd:() => {
     const inp = $("lName"), name = inp.value.trim(); if (!name) return inp.focus();
     const id = keyOf(name); if (!id || id === "boodschappen") return inp.focus();
@@ -1000,7 +1076,7 @@ const ACT = {
     else for (const st of ts) {
       const mine = Object.entries(S.items).filter(([k, v]) => !v.checked && storeOf(k, v, ids) === st.id).map(e => e[1]); if (!mine.length) continue;
       if (ts.length > 1) lines.push("== " + st.name + " ==");
-      for (const c of order(st)) { const r = mine.filter(v => v.cat === c).sort(byName); if (r.length) lines.push(CAT[c].name + ":", ...r.map(v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : "")), ""); }
+      for (const c of order(st)) { const r = mine.filter(v => catOf(v.cat) === c).sort(byName); if (r.length) lines.push(CAT[c].name + ":", ...r.map(v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : "")), ""); }
     }
     if (!lines.length) return toast("Er staat niets open op de lijst");
     const txt = lines.join("\n").trim();
@@ -1059,7 +1135,9 @@ const ACT = {
   signout:() => { DB.signOut(); }
 };
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-a]"); if (!t || t.disabled || !ACT[t.dataset.a]) return;
+  const t = e.target.closest("[data-a]");
+  if (popOpen() && !e.target.closest(".pop") && !(t && t.dataset.a === "lists")) { closePop(); if (!t || t.closest("#barIn")) return; }
+  if (!t || t.disabled || !ACT[t.dataset.a]) return;
   const ae = document.activeElement;
   if (ae && ae !== t && /INPUT|SELECT/.test(ae.tagName) && (ae.id === "amtIn" || ae.id === "noteIn")) ae.blur();
   ACT[t.dataset.a](t.dataset.k, t, e);
@@ -1069,6 +1147,7 @@ document.addEventListener("change", e => {
   const col = t.dataset.c || "items";
   if (t.dataset.ln) { const n = t.value.trim(); if (n && S.xlists[t.dataset.ln]) DB.set("xlists", t.dataset.ln, {name:n}); else render(true); }
   else if (t.id === "noteIn") DB.set(col, k, {note:t.value.trim()});
+  else if (t.id === "catNameIn" || t.id === "catIcoIn") { const v = t.value.trim(), f = t.id === "catNameIn" ? "name" : "ico"; if (v) DB.set("cats", k, {[f]:v}); render(true); }
   else if (t.id === "stoName") { const n = t.value.trim(), st = storeList().find(s => s.id === k); if (n && st) DB.set("stores", k, {name:n, order:order(st)}); else render(true); }
   else if (t.id === "tplName") { const n = t.value.trim(); if (n && S.templates[k]) DB.set("templates", k, {name:n}); else render(true); }
   else if (t.id === "amtIn") { const n = parseFloat(t.value.replace(",", ".")); t.blur(); if (n > 0) DB.set(col, k, {qty:Math.round(n * 100) / 100}); else render(true); }
@@ -1078,7 +1157,7 @@ document.addEventListener("change", e => {
 document.addEventListener("keydown", e => {
   const t = e.target; if (e.key !== "Enter" || !t.dataset) return;
   if (t.dataset.enter) { e.preventDefault(); ACT[t.dataset.enter](); }
-  else if (t.id === "amtIn" || t.id === "noteIn" || t.id === "tplName" || t.id === "stoName" || t.dataset.ln) t.blur();
+  else if (t.id === "amtIn" || t.id === "noteIn" || t.id === "tplName" || t.id === "stoName" || t.id === "catNameIn" || t.id === "catIcoIn" || t.dataset.ln) t.blur();
 });
 document.addEventListener("focusout", e => { if ($("page").contains(e.target)) setTimeout(() => { if (route !== "lijst") render(); }, 0); });
 $("addForm").addEventListener("submit", e => {
@@ -1090,7 +1169,9 @@ $("q").addEventListener("input", renderSug);
 $("q").addEventListener("focus", renderSug);
 $("q").addEventListener("blur", () => setTimeout(renderSug, 180));
 $("sug").addEventListener("pointerdown", e => e.preventDefault());
-addEventListener("hashchange", onRoute);
+addEventListener("hashchange", () => { closePop(); onRoute(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closePop(); });
+addEventListener("resize", closePop);
 
 /* ---------- slepen in de looproute ---------- */
 let drag = null, dragLock = false;
@@ -1156,7 +1237,7 @@ document.addEventListener("visibilitychange", () => { if (document.visibilitySta
 
 /* ---------- start ---------- */
 applyTheme(); buildTabs();
-$("addIco").outerHTML = ico("plus"); $("addBtn").innerHTML = ico("arrowUp"); $("gateLogo").innerHTML = ico("list");
+$("addIco").outerHTML = ico("plus"); $("addBtn").innerHTML = ico("arrowUp"); 
 const cfg = window.FIREBASE_CONFIG || {};
 if (cfg.apiKey) { DB = Fire; Fire.init(cfg).catch(e => gate("Firebase laden mislukt: " + (e.message || e))); }
 else { DB = Local; Local.init(); }
