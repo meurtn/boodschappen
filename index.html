@@ -843,8 +843,9 @@ PAGES["bijna-op"] = () => {
 };
 PAGES.templates = () => {
   const ts = Object.entries(S.templates).sort((a, b) => a[1].name.localeCompare(b[1].name)), n = Object.keys(S.items).length, st = store();
-  let h = ts.length ? "<div class='group'>" + ts.map(([id, t]) => navCell("template", id, esc(t.name), nProd((t.items || []).length) + (storeName(t.store) ? " · " + esc(storeName(t.store)) : ""))).join("") + "</div>" : empty("layers", "Nog geen templates", "Zet een lijst klaar en bewaar hem hier, bijvoorbeeld Wekelijkse boodschappen of Gourmet.");
-  h += "<h3 class='ch'>Huidige lijst bewaren als template</h3>" + (n ? "<div class='line'><input class='field' id='tName' placeholder='Naam, bv. Gourmet' enterkeyhint='done' data-enter='tsave'><button class='btn' data-a='tsave'>Bewaren</button></div>" + (st.id !== "standaard" ? "<label class='check'><input type='checkbox' id='tStore'>Alleen voor " + esc(st.name) + "</label>" : "") + "<p class='hint'>Op de lijst: " + nProd(n) + ".</p>" : "<p class='hint'>Zet eerst producten op de lijst.</p>");
+  let h = ts.length ? "<div class='group'>" + ts.map(([id, t]) => navCell("template", id, esc(t.name), nProd((t.items || []).length) + (storeName(t.store) ? " · " + esc(storeName(t.store)) : ""))).join("") + "</div>" : empty("layers", "Nog geen templates", "Maak hieronder een nieuwe template, of bewaar je huidige lijst als template.");
+  h += "<h3 class='ch'>Nieuwe template</h3><div class='line'><input class='field' id='tNew' placeholder='Naam, bv. Gourmet' enterkeyhint='done' autocapitalize='sentences' data-enter='tnew'><button class='btn' data-a='tnew'>Maken</button></div><p class='hint'>Begint leeg. Daarna voeg je de producten toe.</p>";
+  h += "<h3 class='ch'>Huidige lijst bewaren als template</h3>" + (n ? "<div class='line'><input class='field' id='tName' placeholder='Naam, bv. Weekmenu' enterkeyhint='done' autocapitalize='sentences' data-enter='tsave'><button class='btn' data-a='tsave'>Bewaren</button></div>" + (st.id !== "standaard" ? "<label class='check'><input type='checkbox' id='tStore'>Alleen voor " + esc(st.name) + "</label>" : "") + "<p class='hint'>Op de lijst: " + nProd(n) + ".</p>" : "<p class='hint'>Zet eerst producten op de lijst.</p>");
   return {title:"Templates", html:h};
 };
 function packPage(kind, argName){
@@ -1141,6 +1142,14 @@ const ACT = {
     inp.value = ""; inp.blur();
     DB.set("templates", keyOf(name) + (st ? " @" + st : ""), {name, store:st, items:Object.values(S.items).map(slim), at:Date.now()});
     render(true); toast("Template " + name + " bewaard");
+  },
+  tnew:() => {
+    const inp = $("tNew"), name = inp.value.trim(); if (!name) return inp.focus();
+    let id = keyOf(name); if (!id) return inp.focus();
+    if (S.templates[id]) { let n = 2; while (S.templates[id + " " + n]) n++; id += " " + n; }
+    inp.value = ""; inp.blur();
+    DB.set("templates", id, {name, store:"", items:[], at:Date.now()});
+    go("template", id); setTimeout(() => { const a = $("tplAdd"); if (a) a.focus(); }, 320);
   },
   trip:k => { let ids = tripIds(); if (ids.includes(k)) { if (ids.length > 1) ids = ids.filter(i => i !== k); } else ids.push(k); setTrip(ids); },
   sadd:() => { const inp = $("sName"), name = inp.value.trim(); if (!name) return inp.focus(); const id = keyOf(name); inp.value = ""; inp.blur(); DB.set("stores", id, {name, order:order()}); setTrip(tripIds().filter(i => i !== id).concat(id)); },
