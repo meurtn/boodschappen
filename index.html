@@ -691,12 +691,7 @@ function renderSug(){
     }).join("");
     box.hidden = false; return;
   }
-  if (!k) {
-    let freq = allProducts().filter(p => p.n > 0 && !onList(p.k)).sort((a, b) => b.n - a.n).slice(0, 14);
-    if (freq.length < 8) freq = freq.concat(["Melk", "Brood", "Eieren", "Bananen", "Kaas", "Tomaten", "Komkommer", "Yoghurt", "Koffie", "Wc-papier"].map(n => product(keyOf(n))).filter(p => !onList(p.k) && !freq.some(f => f.k === p.k))).slice(0, 12);
-    box.innerHTML = freq.length ? "<h3 class='ch'>Vaak gekocht</h3><div class='chips'>" + freq.map(p => "<button type='button' class='chip' data-a='quick' data-k='" + esc(p.k) + "'>" + esc(p.name) + "</button>").join("") + "</div>" : "";
-    box.hidden = !freq.length; return;
-  }
+  if (!k) { box.hidden = true; return; }
   const res = [];
   for (const p of allProducts()) {
     let s = -1;
