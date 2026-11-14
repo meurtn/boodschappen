@@ -362,9 +362,9 @@ const product = k => { const c = CATALOG[k], p = S.products[k]; return (c || (p 
 const allProducts = () => { const ks = new Set([...Object.keys(CATALOG), ...Object.keys(S.products)]); return [...ks].map(product).filter(Boolean); };
 const onList = k => S.items[k] && !S.items[k].checked;
 function guessCat(name){ const k = " " + keyOf(name) + " "; for (const [c, words] of Object.entries(GUESS)) if (words.some(w => k.includes(w))) return c; return "overig"; }
-function storeList(){ const o = {standaard:{name:"Standaard"}, ...S.stores}; return Object.entries(o).map(([id, s]) => ({id, name:s.name || id, order:s.order})).sort((a, b) => a.id === "standaard" ? -1 : b.id === "standaard" ? 1 : a.name.localeCompare(b.name)); }
+function storeList(){ const o = {standaard:{name:"Standaard"}, ...S.stores}; return Object.entries(o).map(([id, s]) => ({id, name:s.name || id, order:s.order})).sort((a, b) => a.name.localeCompare(b.name, "nl", {sensitivity:"base"})); }
 // De route van vandaag: de winkels in de volgorde waarin je ze bezoekt (per apparaat onthouden).
-function tripStores(){ const all = storeList(), t = trip.map(id => all.find(s => s.id === id)).filter(Boolean); return t.length ? t : [all[0]]; }
+function tripStores(){ const all = storeList(), t = trip.map(id => all.find(s => s.id === id)).filter(Boolean); return t.length ? t : [all.find(s => s.id === "standaard")]; }
 function setTrip(t){ trip = t; pref.set("trip", JSON.stringify(t)); render(); }
 const store = () => tripStores()[0];
 // Bij welke winkel van de route hoort dit product: vaste winkel als die in de route zit, anders de eerste.

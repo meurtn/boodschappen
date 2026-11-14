@@ -1,5 +1,5 @@
 // Service worker: app start ook zonder bereik (bv. in de supermarkt).
-const CACHE = "lijstjes-v1";
+const CACHE = "lijstjes-v2";
 const SHELL = ["./", "index.html", "firebase-config.js", "manifest.webmanifest", "icon-192.png", "icon-512.png", "icon-180.png"];
 
 self.addEventListener("install", e => {
@@ -19,7 +19,7 @@ self.addEventListener("fetch", e => {
     })));
   } else if (url.origin === location.origin && !url.pathname.startsWith("/__/")) {
     // Eigen bestanden: eerst netwerk (zodat updates direct binnenkomen), anders cache.
-    e.respondWith(fetch(e.request).then(res => {
+    e.respondWith(fetch(e.request, {cache:"no-cache"}).then(res => {
       const copy = res.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return res;
     }).catch(() => caches.match(e.request).then(hit => hit || caches.match("index.html"))));
   }
