@@ -144,8 +144,8 @@ body.shop .row{touch-action:pan-y}
 .row.swiping .acts{display:flex}
 .acts .side{display:flex;visibility:hidden}
 .row.sl .side.l,.row.sr .side.r{visibility:visible}
-.sa{width:84px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:500;line-height:1.15;text-align:center;padding:0 6px}
-.sa .i{width:20px;height:20px}
+.sa{width:66px;display:grid;place-items:center}
+.sa .i{width:25px;height:25px;stroke-width:2.4}
 .sa.miss{background:var(--q1);color:var(--acc-ink)}
 .sa.next{background:var(--soft);color:var(--acc)}
 .sa:active{filter:brightness(.92)}
@@ -767,8 +767,8 @@ function rowHtml(k, it, nx, pv, x){
 // Achter elke regel in de winkelmodus: opties die verschijnen als je opzij veegt.
 function swActs(k, nx, x){
   const a = " data-k='" + esc(k) + "'" + (x ? " data-x='1'" : "");
-  const b = (nx ? "<button class='sa next' data-a='swnext'" + a + " data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "'>" + ico("arrowR") + "<span>Naar " + esc(nx.name) + "</span></button>" : "") +
-    "<button class='sa miss' data-a='swmiss'" + a + ">" + ico("nofind") + "<span>Niet gevonden</span></button>";
+  const b = (nx ? "<button class='sa next' data-a='swnext'" + a + " data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "' aria-label='Naar " + esc(nx.name) + "'>" + ico("arrowR") + "</button>" : "") +
+    "<button class='sa miss' data-a='swmiss'" + a + " aria-label='Niet gevonden'>" + ico("nofind") + "</button>";
   return "<div class='acts' data-n='" + (nx ? 2 : 1) + "'><div class='side l'>" + b + "</div><div class='side r'>" + b + "</div></div>";
 }
 // Niet gevonden (alleen in de winkelmodus): tik om terug te zetten, of door naar de volgende winkel.
@@ -1290,7 +1290,7 @@ function finishNow(){
 }
 
 /* ---------- vegen in de winkelmodus: opties onthullen ---------- */
-const SAW = 84;
+const SAW = 66;
 let sw = null, swOpen = null, swallowUntil = 0;
 document.addEventListener("click", e => { if (Date.now() < swallowUntil) { e.stopPropagation(); e.preventDefault(); } }, true);
 function swSet(row, rin, off, anim){
