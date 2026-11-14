@@ -140,11 +140,15 @@ button.cell:active{background:var(--fill)}
 .row{display:flex;align-items:stretch;min-height:52px;border-bottom:1px solid var(--line);position:relative;overflow:hidden}
 .rin{flex:1;display:flex;align-items:center;padding-right:8px;background:var(--surface);position:relative;z-index:1;min-width:0}
 body.shop .row{touch-action:pan-y}
-.swl{position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 18px;background:var(--fill);color:var(--mute);font-size:14px;font-weight:500;opacity:0;transition:background-color .15s,color .15s}
-.swl span{visibility:hidden}
-.row.swiping .swl{opacity:1}
-.row.sl .swl span:first-child,.row.sr .swl span:last-child{visibility:visible}
-.row.go .swl{background:var(--q1);color:var(--acc-ink)}
+.acts{position:absolute;inset:0;display:none;justify-content:space-between}
+.row.swiping .acts{display:flex}
+.acts .side{display:flex;visibility:hidden}
+.row.sl .side.l,.row.sr .side.r{visibility:visible}
+.sa{width:84px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:500;line-height:1.15;text-align:center;padding:0 6px}
+.sa .i{width:20px;height:20px}
+.sa.miss{background:var(--q1);color:var(--acc-ink)}
+.sa.next{background:var(--soft);color:var(--acc)}
+.sa:active{filter:brightness(.92)}
 .row.miss .nm{color:var(--mute)}
 .row.miss .nm .qty{padding:0 0 0 4px;font-size:13px}
 /* lijstmodus is plannen: geen afvinkrondjes */
@@ -634,7 +638,7 @@ const IC = {
   clock:"<circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/>",
   share:"<path d='M12 15V3M8 7l4-4 4 4M5 12v7a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-7'/>",
   grip:"<path d='M5 8h14M5 12h14M5 16h14'/>",
-  chevD:"<path d='m7 10 5 5 5-5'/>", tag:"<path d='M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z'/><circle cx='8' cy='8' r='1.4'/>", edit:"<path d='M4 20h4L19 9l-4-4L4 16z'/>",
+  chevD:"<path d='m7 10 5 5 5-5'/>", nofind:"<circle cx='11' cy='11' r='6.5'/><path d='m20 20-4.3-4.3M8.5 8.5l5 5M13.5 8.5l-5 5'/>", tag:"<path d='M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z'/><circle cx='8' cy='8' r='1.4'/>", edit:"<path d='M4 20h4L19 9l-4-4L4 16z'/>",
   sliders:"<path d='M4 7h10M18 7h2M4 17h2M10 17h10'/><circle cx='16' cy='7' r='2'/><circle cx='8' cy='17' r='2'/>"
 };
 const ico = n => "<svg class='i' viewBox='0 0 24 24' aria-hidden='true'>" + IC[n] + "</svg>";
@@ -752,13 +756,20 @@ function rowHtml(k, it, nx, pv, x){
   const P = x ? "x" : "";
   const q = it.qty || 1, bd = badge(it), ka = " data-k='" + esc(k) + "'";
   return "<div class='row" + (it.checked ? " done" : "") + (k === flashKey ? " flash" : "") + (tick.k === k && Date.now() - tick.t < 400 ? " just" : "") + "' data-row='" + esc(k) + "'" + (x ? " data-x='1'" : "") + ">" +
-    "<span class='swl' aria-hidden='true'><span>Niet gevonden</span><span>Niet gevonden</span></span><div class='rin'>" +
+    (it.checked ? "" : swActs(k, nx, x)) + "<div class='rin'>" +
     "<button class='tick' data-a='" + P + "toggle'" + ka + " aria-label='" + (it.checked ? "Terugzetten" : "Afvinken") + "'><span class='c'>" + ico("check") + "</span></button>" +
     "<button class='rmain' data-a='" + P + "rowtap'" + ka + "><span class='nm'>" + esc(it.name) + "</span>" + (it.note ? "<span class='nt'>" + esc(it.note) + "</span>" : "") + "</button>" +
     (it.checked ? (bd ? "<span class='qty'>" + bd + "</span>" : "") :
       (bd ? "<span class='qty shoponly'>" + bd + "</span>" : "") +
       "<div class='step'><button data-a='" + P + "minus'" + ka + " aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(it) + "</b><button data-a='" + P + "plus'" + ka + " aria-label='Meer'>" + ico("plus") + "</button></div>") +
     "</div></div>";
+}
+// Achter elke regel in de winkelmodus: opties die verschijnen als je opzij veegt.
+function swActs(k, nx, x){
+  const a = " data-k='" + esc(k) + "'" + (x ? " data-x='1'" : "");
+  const b = (nx ? "<button class='sa next' data-a='swnext'" + a + " data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "'>" + ico("arrowR") + "<span>Naar " + esc(nx.name) + "</span></button>" : "") +
+    "<button class='sa miss' data-a='swmiss'" + a + ">" + ico("nofind") + "<span>Niet gevonden</span></button>";
+  return "<div class='acts' data-n='" + (nx ? 2 : 1) + "'><div class='side l'>" + b + "</div><div class='side r'>" + b + "</div></div>";
 }
 // Niet gevonden (alleen in de winkelmodus): tik om terug te zetten, of door naar de volgende winkel.
 function missHtml(k, it, nx, x){
@@ -847,9 +858,10 @@ function renderList(){
   ts.forEach((st, si) => {
     const mine = open.filter(([k, v]) => storeOf(k, v, ids) === st.id); if (!mine.length) return;
     if (multi) h += "<div class='shead'><b>" + (si + 1) + "</b><span>" + esc(st.name) + "</span><small>" + mine.length + " te pakken</small></div>";
+    const nx = shop ? ts[si + 1] || null : null;
     for (const c of order(st)) {
       const rows = mine.filter(([, v]) => catOf(v.cat) === c);
-      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v)).join("") + "</div>";
+      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx)).join("") + "</div>";
     }
   });
   if (miss.length) h += "<h3 class='ch'>Niet gevonden<span class='n'>" + miss.length + "</span></h3><div class='group'>" + miss.map(([k, v]) => missHtml(k, v, ts[ids.indexOf(storeOf(k, v, ids)) + 1] || null)).join("") + "</div>";
@@ -1127,6 +1139,8 @@ const ACT = {
   unmiss:k => { flashKey = k; DB.set("items", k, {missing:false}); },
   xunmiss:k => { flashKey = k; DB.set("xitems", k, {missing:false}); },
   missnext:(k, t) => { const it = S.items[k], was = it.store || "", s = t.dataset.s; DB.set("items", k, {store:s, missing:false}); flashKey = k; toast(it.name + " bij " + t.dataset.n + " halen", "Ongedaan maken", () => DB.set("items", k, {store:was, missing:true})); },
+  swmiss:(k, t) => { const col = t.dataset.x ? "xitems" : "items"; swDo(t, k => { const it = S[col][k]; if (!it) return; DB.set(col, k, {missing:true}); toast(it.name + " niet gevonden", "Ongedaan maken", () => DB.set(col, k, {missing:false})); }); },
+  swnext:(k, t) => { const s = t.dataset.s, n = t.dataset.n; swDo(t, k => { const it = S.items[k]; if (!it) return; const was = it.store || ""; DB.set("items", k, {store:s}); toast(it.name + " bij " + n + " halen", "Ongedaan maken", () => DB.set("items", k, {store:was})); }); },
   finish:finish, finishok:() => { closeModal(); finishNow(); }, modalclose:closeModal,
   next:(k, t) => { const it = S.items[k], s = t.dataset.s, was = storeOf(k, it, tripStores().map(x => x.id)); flashKey = k; DB.set("items", k, {store:s}); toast(it.name + " verplaatst naar " + t.dataset.n, "Ongedaan maken", () => { flashKey = k; DB.set("items", k, {store:was}); }); },
   stoggle:(k, t) => { const it = S.items[k], on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => DB.set("products", k, {name:it.name, cat:it.cat, staple:on}), 200); },
@@ -1135,7 +1149,7 @@ const ACT = {
   quick:k => { const p = product(k); if (p) addItem(p.name); $("q").focus(); },
   dueadd:k => { const p = product(k); if (p) addItem(p.name); },
   snooze:k => { const p = product(k); if (!p) return; const r = rhythm(p); DB.set("products", k, {name:p.name, cat:p.cat, snooze:Date.now() + (r ? r.days : 4) * DAY / 2}); },
-  shop:() => { const on = !document.body.classList.contains("shop"); setShop(on); window.scrollTo(0, 0); if (on) toast("Tik om af te vinken, veeg opzij als iets er niet is"); },
+  shop:() => { const on = !document.body.classList.contains("shop"); setShop(on); window.scrollTo(0, 0); if (on) toast("Tik om af te vinken, veeg opzij voor meer opties"); },
   share:() => {
     const lines = [], ts = tripStores(), ids = ts.map(s => s.id), xl = curList();
     if (xl !== "boodschappen") { const r = xOf(xl).filter(([, v]) => !v.checked).map(e => e[1]); if (r.length) lines.push(S.xlists[xl].name + ":", ...r.map(v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : ""))); }
@@ -1275,13 +1289,28 @@ function finishNow(){
   render(true);
 }
 
-/* ---------- vegen in de winkelmodus: Niet gevonden ---------- */
-let sw = null, swallowUntil = 0;
+/* ---------- vegen in de winkelmodus: opties onthullen ---------- */
+const SAW = 84;
+let sw = null, swOpen = null, swallowUntil = 0;
 document.addEventListener("click", e => { if (Date.now() < swallowUntil) { e.stopPropagation(); e.preventDefault(); } }, true);
+function swSet(row, rin, off, anim){
+  rin.style.transition = anim ? "transform .22s var(--ease)" : "";
+  rin.style.transform = off ? "translateX(" + off + "px)" : "";
+  row.classList.toggle("sl", off > 0); row.classList.toggle("sr", off < 0);
+}
+function swClose(anim){
+  const o = swOpen; if (!o) return; swOpen = null;
+  swSet(o.row, o.rin, 0, anim !== false);
+  setTimeout(() => { if (swOpen !== o) o.row.classList.remove("swiping", "sl", "sr"); }, 230);
+}
 document.addEventListener("pointerdown", e => {
+  if (swOpen) {
+    if (e.target.closest(".acts") && swOpen.row.contains(e.target)) return;
+    swClose(); swallowUntil = Date.now() + 400; return;
+  }
   if (!document.body.classList.contains("shop") || e.button > 0 || sw) return;
-  const row = e.target.closest("#list .row[data-row]"); if (!row || row.classList.contains("done") || leaving.has(row.dataset.row)) return;
-  sw = {row, rin:row.querySelector(".rin"), k:row.dataset.row, x:!!row.dataset.x, id:e.pointerId, x0:e.clientX, y0:e.clientY, dx:0, on:false, w:row.offsetWidth};
+  const row = e.target.closest("#list .row[data-row]"); if (!row || row.classList.contains("done") || !row.querySelector(".acts") || leaving.has(row.dataset.row)) return;
+  sw = {row, rin:row.querySelector(".rin"), id:e.pointerId, x0:e.clientX, y0:e.clientY, dx:0, on:false, W:SAW * +row.querySelector(".acts").dataset.n};
 });
 document.addEventListener("pointermove", e => {
   if (!sw || e.pointerId !== sw.id) return;
@@ -1291,31 +1320,28 @@ document.addEventListener("pointermove", e => {
     if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.3) return;
     sw.on = true; sw.row.classList.add("swiping"); try { sw.row.setPointerCapture(e.pointerId); } catch {}
   }
-  sw.dx = dx; const past = Math.abs(dx) > sw.w * .3;
-  sw.rin.style.transform = "translateX(" + dx + "px)";
-  sw.row.classList.toggle("sl", dx > 0); sw.row.classList.toggle("sr", dx < 0);
-  if (past !== sw.past) { sw.past = past; sw.row.classList.toggle("go", past); if (past) try { navigator.vibrate && navigator.vibrate(6); } catch {} }
+  const a = Math.abs(dx), off = Math.sign(dx) * (a <= sw.W ? a : sw.W + (a - sw.W) * .25);
+  sw.dx = dx; swSet(sw.row, sw.rin, off, false);
 });
 function endSwipe(e){
   if (!sw || (e && e.pointerId !== sw.id)) return;
   const s = sw; sw = null; if (!s.on) return;
   swallowUntil = Date.now() + 350;
-  s.rin.style.transition = "transform .2s var(--ease)";
-  if (Math.abs(s.dx) > s.w * .3) {
-    s.rin.style.transform = "translateX(" + (s.dx > 0 ? s.w : -s.w) + "px)";
-    const col = s.x ? "xitems" : "items";
-    setTimeout(() => leaveRow(s.row, s.k, false, k => {
-      const it = S[col][k]; if (!it) return;
-      DB.set(col, k, {missing:true});
-      toast(it.name + " niet gevonden", "Ongedaan maken", () => DB.set(col, k, {missing:false}));
-    }), 180);
-  } else {
-    s.rin.style.transform = "";
-    setTimeout(() => { s.row.classList.remove("swiping", "sl", "sr", "go"); s.rin.style.transition = ""; }, 200);
-  }
+  if (Math.abs(s.dx) > s.W * .45) {
+    const off = Math.sign(s.dx) * s.W;
+    swSet(s.row, s.rin, off, true); swOpen = {row:s.row, rin:s.rin};
+    try { navigator.vibrate && navigator.vibrate(6); } catch {}
+  } else { swOpen = {row:s.row, rin:s.rin}; swClose(); }
 }
+addEventListener("scroll", () => { if (swOpen && !sw) swClose(); }, {passive:true});
 document.addEventListener("pointerup", endSwipe);
 document.addEventListener("pointercancel", e => { if (sw && sw.on) { sw.dx = 0; endSwipe(e); } else sw = null; });
+function swDo(t, fn){
+  const row = t.closest(".row"), k = t.dataset.k; swOpen = null;
+  row.querySelector(".rin").style.transition = "transform .18s var(--ease)";
+  row.querySelector(".rin").style.transform = "translateX(" + (row.classList.contains("sl") ? row.offsetWidth : -row.offsetWidth) + "px)";
+  setTimeout(() => leaveRow(row, k, false, fn), 150);
+}
 document.addEventListener("keydown", e => { if (e.key === "Escape") { closePop(); closeModal(); } });
 addEventListener("resize", closePop);
 
