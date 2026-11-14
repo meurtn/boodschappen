@@ -19,12 +19,12 @@ document.documentElement.dataset.theme=d?"dark":"light"})();
 :root{
   --bg:#edf1f6;--surface:#fff;--fill:#e2e8f0;--text:#18202b;--mute:#5f6b7c;--faint:#9aa5b4;--line:#d5dce6;
   --acc:#2b5fa8;--acc-ink:#fff;--soft:#dde8f7;--danger:#b4412f;
-  --bar:rgba(237,241,246,.86);--ease:cubic-bezier(.2,.7,.2,1);color-scheme:light;
+  --q1:#1f4f94;--q2:#3f77c4;--bar:rgba(237,241,246,.86);--ease:cubic-bezier(.2,.7,.2,1);color-scheme:light;
 }
 :root[data-theme=dark]{
   --bg:#0d1116;--surface:#1c232d;--fill:#28313d;--text:#e6eaf0;--mute:#98a5b5;--faint:#657182;--line:#313b48;
   --acc:#7fb0ee;--acc-ink:#0b1420;--soft:#223450;--danger:#e8836f;
-  --bar:rgba(13,17,22,.86);color-scheme:dark;
+  --q1:#6ea4ea;--q2:#a9cbf5;--bar:rgba(13,17,22,.86);color-scheme:dark;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html{-webkit-text-size-adjust:100%}
@@ -78,10 +78,19 @@ h1,h2,h3,p{margin:0}
 .prog{height:3px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:10px}
 .prog i{display:block;height:100%;width:0;background:var(--acc);border-radius:3px;transition:width .4s var(--ease)}
 
+.lists{display:flex;gap:8px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none}
+.lists::-webkit-scrollbar{display:none}
+.lists .chip{flex:none;min-height:34px;padding:0 13px}
+.lists .chip small{margin-left:0;font-variant-numeric:tabular-nums}
+.lists .chip.on small{color:inherit;opacity:.75}
+.lists .chip.new{border-style:dashed;color:var(--mute)}
+body.shop .lists{display:none}
+.inl.left{text-align:left}
+
 /* pagina-overgangen */
 #main.fwd{animation:fwd .26s var(--ease)}
 #main.back{animation:bck .26s var(--ease)}
-#main.tab{animation:tab .2s ease-out}
+#main.tab,#pgList.swap{animation:tab .2s ease-out}
 @keyframes fwd{from{opacity:0;transform:translateX(20px)}}
 @keyframes bck{from{opacity:0;transform:translateX(-20px)}}
 @keyframes tab{from{opacity:0;transform:translateY(5px)}}
@@ -134,12 +143,12 @@ button.cell:active{background:var(--fill)}
 .nm{overflow-wrap:anywhere}
 .nt{font-size:13px;color:var(--mute)}
 .row.done .nm{color:var(--mute);text-decoration:line-through;text-decoration-color:var(--faint)}
-.row .qty{padding:0 8px}
+.row .qty{padding:0 8px;color:var(--q2);font-weight:500}
 .step{display:flex;align-items:center;height:34px;border:1px solid var(--line);border-radius:10px;flex:none}
-.step button{width:32px;height:32px;display:grid;place-items:center;color:var(--mute);border-radius:9px;transition:background-color .12s}
+.step button{width:32px;height:32px;display:grid;place-items:center;color:var(--q1);border-radius:9px;transition:background-color .12s}
 .step button:active{background:var(--fill)}
 .step .i{width:15px;height:15px;stroke-width:2}
-.step b{min-width:18px;padding:0 2px;text-align:center;font-size:14.5px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.step b{color:var(--q2);min-width:18px;padding:0 2px;text-align:center;font-size:14.5px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
 .nx{flex:none;display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 10px;margin-right:4px;border-radius:9px;border:1px solid var(--line);color:var(--mute);font-size:13px}
 .nx .i{width:13px;height:13px}
 .row.flash,.cell.flash{animation:fl 1s ease-out}
@@ -184,7 +193,7 @@ button.chip:active{transform:scale(.96)}
 .num.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
 .hero{padding:10px 0 20px}
 .bigstep{display:flex;align-items:center;justify-content:center;gap:22px;margin-bottom:16px}
-.bigstep button{width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;transition:transform .12s,background-color .12s}
+.bigstep button{color:var(--q1);width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;transition:transform .12s,background-color .12s}
 .bigstep button:active{transform:scale(.92);background:var(--fill)}
 .bigstep b{font-size:34px;font-weight:300;letter-spacing:-.02em;min-width:90px;text-align:center;font-variant-numeric:tabular-nums;white-space:nowrap}
 .empty{text-align:center;padding:48px 20px 18px;color:var(--mute);font-size:14.5px}
@@ -246,9 +255,10 @@ body:not(.shop) .shoponly,body:not(.shop) .nx,body:not(.shop) .shopbar{display:n
 <header class="top" id="top"><div class="wrap">
   <div class="barin" id="barIn"></div>
   <div id="listHead" hidden>
+    <div class="lists" id="listTabs"></div>
     <form class="add" id="addForm" autocomplete="off">
       <span id="addIco"></span>
-      <input id="q" type="text" enterkeyhint="done" autocapitalize="sentences" placeholder="Voeg toe, bv. 2 paprika of 500 g gehakt" aria-label="Product toevoegen">
+      <input id="q" type="text" enterkeyhint="done" autocapitalize="sentences" placeholder="Voeg toe, bv. 2 paprika" aria-label="Product toevoegen">
       <button type="submit" class="addb" id="addBtn" aria-label="Toevoegen"></button>
     </form>
     <div class="sug" id="sug" hidden></div>
@@ -351,8 +361,8 @@ for (const [cat, list] of Object.entries(CATALOG_SRC)) for (const name of list.s
 
 /* ---------- toestand ---------- */
 const LIST = "boodschappen";
-const PATH = {items:"lists/" + LIST + "/items", products:"products", stores:"stores", templates:"templates", history:"history"};
-const S = {items:{}, products:{}, stores:{}, templates:{}, history:{}};
+const PATH = {items:"lists/" + LIST + "/items", products:"products", stores:"stores", templates:"templates", history:"history", xlists:"xlists", xitems:"xitems"};
+const S = {items:{}, products:{}, stores:{}, templates:{}, history:{}, xlists:{}, xitems:{}};
 let DB = null, user = null, ready = false, sheet = null, flashKey = null, wake = null;
 let trip = []; try { trip = JSON.parse(pref.get("trip", "[]")) || []; } catch {}
 const DAY = 864e5;
@@ -568,8 +578,8 @@ try { mq.addEventListener("change", applyTheme); } catch {}
 
 /* ---------- navigatie ---------- */
 const TABS = [["lijst", "Lijst", "list"], ["bijna-op", "Bijna op", "home"], ["templates", "Templates", "layers"], ["meer", "Meer", "more"]];
-const PARENT = {winkels:"meer", "vorige-lijsten":"meer", instellingen:"meer", looproute:"winkels", template:"templates", bezoek:"vorige-lijsten", product:"lijst"};
-const NEEDS = {looproute:1, template:1, bezoek:1, product:1};
+const PARENT = {ding:"lijst", lijsten:"lijst", winkels:"meer", "vorige-lijsten":"meer", instellingen:"meer", looproute:"winkels", template:"templates", bezoek:"vorige-lijsten", product:"lijst"};
+const NEEDS = {ding:1, looproute:1, template:1, bezoek:1, product:1};
 const PAGES = {}, args = {}, scrolls = {};
 let route = null, depth = 0, navDir = "", tick = {k:"", t:0};
 const hashName = () => { try { return decodeURIComponent(location.hash.slice(1)) || "lijst"; } catch { return "lijst"; } };
@@ -620,6 +630,24 @@ function renderSug(){
   if (route !== "lijst" || document.activeElement !== inp) { box.hidden = true; return; }
   const arg = parse(inp.value), name = arg.name, k = keyOf(name);
   sugArg = arg; sugRows = []; enterIdx = -1;
+  const xl = curList();
+  if (xl !== "boodschappen") {
+    const known = Object.entries((S.xlists[xl] && S.xlists[xl].known) || {}), on = key => { const it = S.xitems[xl + "|" + key]; return it && !it.checked ? it : null; };
+    if (!k) {
+      const f = known.filter(([key]) => !on(key)).sort((a, b) => a[1].localeCompare(b[1])).slice(0, 16);
+      box.innerHTML = f.length ? "<h3 class='ch'>Eerder op deze lijst</h3><div class='chips'>" + f.map(([key, n]) => "<button type='button' class='chip' data-a='xquick' data-k='" + esc(key) + "'>" + esc(n) + "</button>").join("") + "</div>" : "";
+      box.hidden = !f.length; return;
+    }
+    sugRows = known.filter(([key]) => key.includes(k)).sort((a, b) => (b[0] === k) - (a[0] === k) || b[0].startsWith(k) - a[0].startsWith(k) || a[1].localeCompare(b[1])).slice(0, 6).map(([key, n]) => ({k:key, name:n}));
+    if (!(sugRows[0] && sugRows[0].k === k)) sugRows.push({isNew:true, k, name:cap(name)});
+    enterIdx = sugRows[0] && !sugRows[0].isNew && sugRows[0].k.startsWith(k) ? 0 : sugRows.findIndex(r => r.isNew);
+    box.innerHTML = sugRows.map((r, i) => {
+      const it = on(r.k), d = it ? (arg.explicit ? convert(arg.qty, arg.unit || "", it.unit || "") : stepOf(it.unit)) : 0, what = arg.explicit ? badge(arg) : "";
+      const right = it ? "<small class='inc'>Staat er al · " + amount(it) + (d === null ? "" : " → " + amount({qty:(it.qty || 1) + d, unit:it.unit})) + "</small>" : "<small>" + (what ? esc(what) + " · " : "") + (r.isNew ? "Toevoegen" : "Eerder gekocht") + "</small>";
+      return "<button type='button' class='s" + (i === enterIdx ? " enter" : "") + "' data-a='pick' data-k='" + i + "'><span class='grow'>" + esc(r.name) + "</span>" + right + "</button>";
+    }).join("");
+    box.hidden = false; return;
+  }
   if (!k) {
     let freq = allProducts().filter(p => p.n > 0 && !onList(p.k)).sort((a, b) => b.n - a.n).slice(0, 14);
     if (freq.length < 8) freq = freq.concat(["Melk", "Brood", "Eieren", "Bananen", "Kaas", "Tomaten", "Komkommer", "Yoghurt", "Koffie", "Wc-papier"].map(n => product(keyOf(n))).filter(p => !onList(p.k) && !freq.some(f => f.k === p.k))).slice(0, 12);
@@ -648,25 +676,68 @@ function renderSug(){
 }
 function pick(i){
   const r = sugRows[i]; if (!r) return;
-  addItem(r.name, sugArg, r.isNew ? {cat:r.cat} : null);
+  if (curList() !== "boodschappen") xadd(r.name, sugArg); else addItem(r.name, sugArg, r.isNew ? {cat:r.cat} : null);
   const inp = $("q"); inp.value = ""; inp.focus(); renderSug();
 }
 
 /* ---------- de lijst ---------- */
-function rowHtml(k, it, nx, pv){
+function rowHtml(k, it, nx, pv, x){
+  const P = x ? "x" : "";
   const q = it.qty || 1, bd = badge(it), ka = " data-k='" + esc(k) + "'";
   return "<div class='row" + (it.checked ? " done" : "") + (k === flashKey ? " flash" : "") + (tick.k === k && Date.now() - tick.t < 400 ? " just" : "") + "'>" +
-    "<button class='tick' data-a='toggle'" + ka + " aria-label='" + (it.checked ? "Terugzetten" : "Afvinken") + "'><span class='c'>" + ico("check") + "</span></button>" +
-    "<button class='rmain' data-a='rowtap'" + ka + "><span class='nm'>" + esc(it.name) + "</span>" + (it.note ? "<span class='nt'>" + esc(it.note) + "</span>" : "") + "</button>" +
+    "<button class='tick' data-a='" + P + "toggle'" + ka + " aria-label='" + (it.checked ? "Terugzetten" : "Afvinken") + "'><span class='c'>" + ico("check") + "</span></button>" +
+    "<button class='rmain' data-a='" + P + "rowtap'" + ka + "><span class='nm'>" + esc(it.name) + "</span>" + (it.note ? "<span class='nt'>" + esc(it.note) + "</span>" : "") + "</button>" +
     (it.checked ? (bd ? "<span class='qty'>" + bd + "</span>" : "") :
       (bd ? "<span class='qty shoponly'>" + bd + "</span>" : "") +
       (pv ? "<button class='nx' data-a='next'" + ka + " data-s='" + esc(pv.id) + "' data-n='" + esc(pv.name) + "' aria-label='Terug naar " + esc(pv.name) + "'>" + ico("arrowL") + esc(pv.name) + "</button>" : "") +
       (nx ? "<button class='nx' data-a='next'" + ka + " data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "' aria-label='Naar " + esc(nx.name) + "'>" + ico("arrowR") + esc(nx.name) + "</button>" : "") +
-      "<div class='step'><button data-a='minus'" + ka + " aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(it) + "</b><button data-a='plus'" + ka + " aria-label='Meer'>" + ico("plus") + "</button></div>") +
+      "<div class='step'><button data-a='" + P + "minus'" + ka + " aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(it) + "</b><button data-a='" + P + "plus'" + ka + " aria-label='Meer'>" + ico("plus") + "</button></div>") +
     "</div>";
 }
+// ---------- extra lijsten (Action, Ikea, ...): eenvoudige lijstjes zonder schappen of looproute
+const curList = () => { const c = pref.get("list", "boodschappen"); return c !== "boodschappen" && S.xlists[c] ? c : "boodschappen"; };
+const xOf = l => Object.entries(S.xitems).filter(([, v]) => v.list === l).sort((a, b) => a[1].name.localeCompare(b[1].name));
+function xadd(rawName, a){
+  const l = curList(), key = keyOf(rawName); if (!key || l === "boodschappen") return;
+  const id = l + "|" + key, ex = S.xitems[id], known = (S.xlists[l] && S.xlists[l].known) || {}, name = known[key] || cap(rawName);
+  if (ex && !ex.checked) {
+    const d = a && a.explicit ? convert(a.qty, a.unit || "", ex.unit || "") : stepOf(ex.unit);
+    if (d === null) toast(name + " staat er al als " + amount(ex)); else { DB.inc("xitems", id, "qty", d); toast(name + ": nu " + amount({qty:(ex.qty || 1) + d, unit:ex.unit}) + " op de lijst"); }
+  } else DB.set("xitems", id, {list:l, name, qty:a && a.explicit ? a.qty : 1, unit:a && a.explicit ? (a.unit || "") : "", note:"", checked:false, by:me(), at:Date.now()});
+  if (!known[key]) DB.set("xlists", l, {known:{...known, [key]:name}});
+  flashKey = id; setTimeout(render, 0);
+}
+function xtoggle(k, quiet){ const it = S.xitems[k]; if (!it) return; DB.set("xitems", k, {checked:!it.checked, checkedAt:Date.now()}); if (!quiet) try { navigator.vibrate && navigator.vibrate(8); } catch {} }
+function xremove(k){ const old = S.xitems[k]; if (!old) return; DB.del("xitems", k); toast(old.name + " verwijderd", "Ongedaan maken", () => DB.set("xitems", k, old)); }
+function xstep(k, d){ const it = S.xitems[k]; if (!it) return; const st = stepOf(it.unit); if (d < 0 && (it.qty || 1) <= st) return xremove(k); DB.inc("xitems", k, "qty", d * st); }
+function renderX(l, shop){
+  const name = S.xlists[l].name, all = xOf(l), open = all.filter(([, v]) => !v.checked), done = all.filter(([, v]) => v.checked);
+  $("progWrap").hidden = !all.length;
+  $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
+  let h = "";
+  if (!all.length) h += empty("list", name + " is leeg", "Typ hierboven wat je bij " + name + " nodig hebt.");
+  else if (!open.length) h += empty("check", "Alles binnen", "Wis de afgevinkte producten om de lijst leeg te maken.") + "<div class='line center'><button class='btn' data-a='xclear'>Lijst leegmaken</button></div>";
+  if (open.length) h += "<div class='group' style='margin-top:16px'>" + open.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>";
+  if (done.length) {
+    done.sort((a, b) => (b[1].checkedAt || 0) - (a[1].checkedAt || 0));
+    h += "<h3 class='ch'>In het karretje<span class='n'><button data-a='xclear'>Wissen</button></span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>";
+  }
+  $("list").innerHTML = h; flashKey = null;
+  return {title:shop ? "Winkelen bij " + name : name, sub:all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst", act:shop || !open.length ? "" : "<button class='pill' data-a='shop'>" + ico("cart") + "Winkelen</button>"};
+}
+function renderListTabs(cur){
+  const box = $("listTabs"), sl = box.scrollLeft, n0 = Object.values(S.items).filter(v => !v.checked).length;
+  const chip = (id, name, n) => "<button class='chip" + (id === cur ? " on" : "") + "' data-a='setlist' data-k='" + esc(id) + "'>" + esc(name) + (n ? "<small>" + n + "</small>" : "") + "</button>";
+  box.innerHTML = chip("boodschappen", "Boodschappen", n0) + Object.entries(S.xlists).sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([id, l]) => chip(id, l.name, xOf(id).filter(([, v]) => !v.checked).length)).join("") +
+    "<button class='chip new' data-a='nav' data-k='lijsten'>" + ico("plus") + "Lijst</button>";
+  box.scrollLeft = sl;
+}
 function renderList(){
-  const shop = document.body.classList.contains("shop");
+  const shop = document.body.classList.contains("shop"), cur = curList();
+  renderListTabs(cur);
+  $("q").placeholder = cur === "boodschappen" ? "Voeg toe, bv. 2 paprika" : "Voeg toe aan " + S.xlists[cur].name;
+  $("demo").style.display = cur === "boodschappen" ? "" : "none";
+  if (cur !== "boodschappen") return renderX(cur, shop);
   const all = Object.entries(S.items).sort((a, b) => a[1].name.localeCompare(b[1].name));
   const open = all.filter(([, v]) => !v.checked), done = all.filter(([, v]) => v.checked);
   const ts = tripStores(), ids = ts.map(s => s.id), multi = ts.length > 1;
@@ -725,7 +796,7 @@ function packPage(kind, argName){
       "<div class='line'><button class='btn grow' data-a='puse'" + a + ">Toevoegen aan lijst</button><button class='btn sec grow' data-a='pnew'" + a + ">Als nieuwe lijst</button></div>" +
       "<p class='hint'>Toevoegen telt op bij wat al op de lijst staat. Als nieuwe lijst vervangt de huidige lijst.</p>" +
       "<h3 class='ch'>Producten</h3>" +
-      (tpl ? "<div class='line' style='margin-bottom:10px'><input class='field' id='tplAdd' placeholder='Toevoegen, bv. 2 paprika of 500 g gehakt' enterkeyhint='done' autocapitalize='sentences' data-enter='padd'><button class='btn' data-a='padd'>Toevoegen</button></div>" : "") +
+      (tpl ? "<div class='line' style='margin-bottom:10px'><input class='field' id='tplAdd' placeholder='bv. 2 paprika' enterkeyhint='done' autocapitalize='sentences' data-enter='padd'><button class='btn' data-a='padd'>Toevoegen</button></div>" : "") +
       (items.length ? "<div class='group'>" + items.map((i, n) => { const b = " data-k='" + esc(id) + "' data-i='" + n + "'"; return "<div class='cell" + (args.padded === n ? " flash" : "") + "'><span class='grow'>" + esc(i.name) + "</span>" + (tpl
         ? "<div class='step'><button data-a='pstep'" + b + " data-d='-1' aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(i) + "</b><button data-a='pstep'" + b + " data-d='1' aria-label='Meer'>" + ico("plus") + "</button></div><button class='ib sm' data-a='pitem'" + b + " aria-label='Uit template halen'>" + ico("x") + "</button>"
         : "<span class='qty'>" + esc(badge(i)) + "</span>") + "</div>"; }).join("") + "</div>" : "<p class='hint' style='margin:0 2px 14px'>Deze template is nog leeg.</p>") +
@@ -741,7 +812,7 @@ PAGES["vorige-lijsten"] = () => {
 PAGES.meer = () => {
   const n = Object.keys(S.history).length;
   return {title:"Meer", html:
-    "<div class='group'>" + navCell("winkels", undefined, "Winkels en looproute", esc(tripStores().map(s => s.name).join(" → ")), "pin") + navCell("vorige-lijsten", undefined, "Vorige lijsten", n ? n + " bewaard" : "Nog niets bewaard", "clock") +
+    "<div class='group'>" + navCell("lijsten", undefined, "Lijsten", esc(["Boodschappen"].concat(Object.values(S.xlists).map(l => l.name).sort()).join(", ")), "list") + navCell("winkels", undefined, "Winkels en looproute", esc(tripStores().map(s => s.name).join(" → ")), "pin") + navCell("vorige-lijsten", undefined, "Vorige lijsten", n ? n + " bewaard" : "Nog niets bewaard", "clock") +
     "<button class='cell' data-a='share'>" + ico("share") + "<span class='grow'><span class='ct'>Lijst delen als tekst</span></span></button></div>" +
     "<div class='group'>" + navCell("instellingen", undefined, "Instellingen", "Weergave en account", "sliders") + "</div>"};
 };
@@ -771,6 +842,25 @@ PAGES.instellingen = () => {
       : "<div class='cell'><span class='grow'><span class='ct'>Demomodus</span><span class='cs'>Niet gekoppeld, alles staat alleen in deze browser</span></span></div>") + "</div>" +
     (user ? "<button class='btn text danger wide' data-a='signout'>Uitloggen</button>" : "")};
 };
+PAGES.ding = () => {
+  const k = args.ding, it = S.xitems[k]; if (!it) return gone();
+  const ka = " data-k='" + esc(k) + "'";
+  return {title:it.name, html:
+    "<div class='hero'><div class='bigstep'><button data-a='xminus'" + ka + " aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(it) + "</b><button data-a='xplus'" + ka + " aria-label='Meer'>" + ico("plus") + "</button></div>" +
+    (it.unit === "g" || it.unit === "ml" ? "<div class='chips center'>" + [50, 250, 500].map(n => "<button class='chip' data-a='xaddq'" + ka + " data-d='" + n + "'>+" + n + "</button>").join("") + "</div>" : "") + "</div>" +
+    "<div class='seg'>" + UNIT_LABEL.map(u => "<button data-a='xunit'" + ka + " data-u='" + u[0] + "' class='" + ((it.unit || "") === u[0] ? "on" : "") + "'>" + u[1] + "</button>").join("") + "</div>" +
+    "<div class='group'><label class='cell'><span class='grow'>Precies aantal</span><input class='inl' id='amtIn' data-c='xitems'" + ka + " inputmode='decimal' value='" + fmt(it.qty || 1) + "'></label>" +
+    "<label class='cell'><span class='lbl'>Notitie</span><input class='inl grow' id='noteIn' data-c='xitems'" + ka + " value='" + esc(it.note) + "' placeholder='bv. merk of maat' enterkeyhint='done'></label></div>" +
+    "<p class='hint' style='margin:-4px 2px 18px'>Op de lijst " + esc((S.xlists[it.list] || {}).name || "") + (it.by ? ", toegevoegd door " + esc(it.by) : "") + ".</p>" +
+    "<div class='group'><button class='cell danger' data-a='xdel'" + ka + ">Van lijst halen</button></div>"};
+};
+PAGES.lijsten = () => {
+  const ls = Object.entries(S.xlists).sort((a, b) => a[1].name.localeCompare(b[1].name));
+  return {title:"Lijsten", html:
+    "<p class='lead'>Extra lijsten voor andere winkels, zoals Action, Ikea of Kruidvat. Zonder schappen, winkelvolgorde of looproute: gewoon een lijstje per winkel.</p>" +
+    (ls.length ? "<div class='group'>" + ls.map(([id, l]) => { const n = xOf(id).filter(([, v]) => !v.checked).length; return "<div class='cell'><input class='inl left grow' data-ln='" + esc(id) + "' value='" + esc(l.name) + "' enterkeyhint='done' aria-label='Naam van de lijst'><span class='qty'>" + (n ? n + " open" : "leeg") + "</span><button class='ib sm' data-a='ldel' data-k='" + esc(id) + "' aria-label='Lijst verwijderen'>" + ico("x") + "</button></div>"; }).join("") + "</div><p class='hint' style='margin:-4px 2px 0'>Tik op een naam om hem te wijzigen.</p>" : "") +
+    "<h3 class='ch'>Lijst toevoegen</h3><div class='line'><input class='field' id='lName' placeholder='bv. Action' enterkeyhint='done' autocapitalize='sentences' data-enter='ladd'><button class='btn' data-a='ladd'>Toevoegen</button></div>"};
+};
 PAGES.product = () => {
   const k = args.product, it = S.items[k]; if (!it) return gone();
   const p = product(k), ka = " data-k='" + esc(k) + "'", shops = storeList().filter(s => s.id !== "standaard"), cs = it.store || (p && p.store) || "", staple = !!(p && p.staple);
@@ -793,7 +883,7 @@ function buildTabs(){ $("tabs").innerHTML = TABS.map(t => "<button data-a='nav' 
 let hold = 0, pending = false;
 const leaving = new Set();
 function release(){ if (--hold <= 0) { hold = 0; if (pending) { pending = false; render(); } } }
-function leaveRow(row, k, checking){
+function leaveRow(row, k, checking, fn){
   hold++; leaving.add(k);
   if (checking) row.classList.add("done", "just");
   try { navigator.vibrate && navigator.vibrate(8); } catch {}
@@ -804,7 +894,7 @@ function leaveRow(row, k, checking){
     els.forEach(el => { el.style.height = el.offsetHeight + "px"; el.style.overflow = "hidden"; });
     void row.offsetHeight;
     els.forEach(el => el.classList.add("leave"));
-    setTimeout(() => { leaving.delete(k); toggle(k, true); release(); }, 300);
+    setTimeout(() => { leaving.delete(k); (fn || toggle)(k, true); release(); }, 300);
   }, checking ? 200 : 60);
 }
 function render(force){
@@ -853,11 +943,36 @@ const packName = (kind, p) => kind === "templates" ? p.name : "Lijst van " + dat
 const tripIds = () => trip.length ? tripStores().map(s => s.id) : [];
 const ACT = {
   nav:(k, t) => go(k, t.dataset.arg), back,
-  toggle:k => {
-    const it = S.items[k]; if (!it || leaving.has(k)) return;
+  toggle:(k, t, e, x) => {
+    const it = (x ? S.xitems : S.items)[k], fn = x ? xtoggle : toggle; if (!it || leaving.has(k)) return;
     const row = document.querySelector("#list .row [data-k='" + CSS.escape(k) + "']");
-    if (route !== "lijst" || !row) { toggle(k); return; }
-    leaveRow(row.closest(".row"), k, !it.checked);
+    if (route !== "lijst" || !row) { fn(k); return; }
+    leaveRow(row.closest(".row"), k, !it.checked, fn);
+  },
+  xtoggle:k => ACT.toggle(k, null, null, true),
+  xrowtap:k => { const it = S.xitems[k]; if (!it) return; if (it.checked || document.body.classList.contains("shop")) ACT.xtoggle(k); else go("ding", k); },
+  xplus:k => xstep(k, 1), xminus:k => xstep(k, -1),
+  xaddq:(k, t) => DB.inc("xitems", k, "qty", +t.dataset.d),
+  xunit:(k, t) => { const it = S.xitems[k], u = t.dataset.u, from = it.unit || ""; if (u === from) return; const c = convert(it.qty || 1, from, u); DB.set("xitems", k, {unit:u, qty:c === null ? defQty(u) : c}); },
+  xdel:k => { back(); xremove(k); },
+  xquick:k => { const l = S.xlists[curList()], n = l && l.known && l.known[k]; if (n) xadd(n); $("q").focus(); },
+  xclear:() => {
+    const done = xOf(curList()).filter(([, v]) => v.checked); if (!done.length) return;
+    done.forEach(([k]) => DB.del("xitems", k));
+    toast(nProd(done.length) + " gewist", "Ongedaan maken", () => done.forEach(([k, v]) => DB.set("xitems", k, v)));
+  },
+  setlist:k => { if (k === curList()) return; pref.set("list", k); $("q").value = ""; setShop(false, true); render(true); window.scrollTo(0, 0); const m = $("pgList"); m.classList.remove("swap"); void m.offsetWidth; m.classList.add("swap"); },
+  ladd:() => {
+    const inp = $("lName"), name = inp.value.trim(); if (!name) return inp.focus();
+    const id = keyOf(name); if (!id || id === "boodschappen") return inp.focus();
+    inp.value = ""; inp.blur();
+    if (!S.xlists[id]) DB.set("xlists", id, {name, known:{}, at:Date.now()});
+    pref.set("list", id); go("lijst");
+  },
+  ldel:k => {
+    const old = S.xlists[k], items = xOf(k); if (!old) return;
+    DB.del("xlists", k); items.forEach(([id]) => DB.del("xitems", id)); render(true);
+    toast("Lijst " + old.name + " verwijderd", "Ongedaan maken", () => { DB.set("xlists", k, old); items.forEach(([id, v]) => DB.set("xitems", id, v)); });
   },
   rowtap:k => { const it = S.items[k]; if (!it) return; if (it.checked || document.body.classList.contains("shop")) ACT.toggle(k); else go("product", k); },
   plus:k => step(k, 1), minus:k => step(k, -1),
@@ -880,8 +995,9 @@ const ACT = {
   snooze:k => { const p = product(k); if (!p) return; const r = rhythm(p); DB.set("products", k, {name:p.name, cat:p.cat, snooze:Date.now() + (r ? r.days : 4) * DAY / 2}); },
   shop:() => { const on = !document.body.classList.contains("shop"); setShop(on); window.scrollTo(0, 0); if (on) toast("Tik een product aan om het af te vinken"); },
   share:() => {
-    const lines = [], ts = tripStores(), ids = ts.map(s => s.id);
-    for (const st of ts) {
+    const lines = [], ts = tripStores(), ids = ts.map(s => s.id), xl = curList();
+    if (xl !== "boodschappen") { const r = xOf(xl).filter(([, v]) => !v.checked).map(e => e[1]); if (r.length) lines.push(S.xlists[xl].name + ":", ...r.map(v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : ""))); }
+    else for (const st of ts) {
       const mine = Object.entries(S.items).filter(([k, v]) => !v.checked && storeOf(k, v, ids) === st.id).map(e => e[1]); if (!mine.length) continue;
       if (ts.length > 1) lines.push("== " + st.name + " ==");
       for (const c of order(st)) { const r = mine.filter(v => v.cat === c).sort(byName); if (r.length) lines.push(CAT[c].name + ":", ...r.map(v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : "")), ""); }
@@ -890,8 +1006,8 @@ const ACT = {
     const txt = lines.join("\n").trim();
     try { (navigator.share ? navigator.share({text:txt}) : navigator.clipboard.writeText(txt).then(() => toast("Lijst gekopieerd"))).catch(() => {}); } catch { toast("Delen lukt hier niet"); }
   },
-  puse:(k, t) => { const p = S[t.dataset.kind][k]; if (p) applyPack(packName(t.dataset.kind, p), p.items, false); },
-  pnew:(k, t) => { const p = S[t.dataset.kind][k]; if (p) applyPack(packName(t.dataset.kind, p), p.items, true); },
+  puse:(k, t) => { pref.set("list", "boodschappen"); const p = S[t.dataset.kind][k]; if (p) applyPack(packName(t.dataset.kind, p), p.items, false); },
+  pnew:(k, t) => { pref.set("list", "boodschappen"); const p = S[t.dataset.kind][k]; if (p) applyPack(packName(t.dataset.kind, p), p.items, true); },
   pdel:(k, t) => { const c = t.dataset.kind, old = S[c][k]; back(); DB.del(c, k); toast("Verwijderd", "Ongedaan maken", () => DB.set(c, k, old)); },
   pitem:(k, t) => { const tp = S.templates[k]; if (!tp) return; DB.set("templates", k, {items:(tp.items || []).filter((x, i) => i !== +t.dataset.i)}); render(true); },
   pstep:(k, t) => {
@@ -950,17 +1066,19 @@ document.addEventListener("click", e => {
 });
 document.addEventListener("change", e => {
   const t = e.target, k = t.dataset.k;
-  if (t.id === "noteIn") DB.set("items", k, {note:t.value.trim()});
+  const col = t.dataset.c || "items";
+  if (t.dataset.ln) { const n = t.value.trim(); if (n && S.xlists[t.dataset.ln]) DB.set("xlists", t.dataset.ln, {name:n}); else render(true); }
+  else if (t.id === "noteIn") DB.set(col, k, {note:t.value.trim()});
   else if (t.id === "stoName") { const n = t.value.trim(), st = storeList().find(s => s.id === k); if (n && st) DB.set("stores", k, {name:n, order:order(st)}); else render(true); }
   else if (t.id === "tplName") { const n = t.value.trim(); if (n && S.templates[k]) DB.set("templates", k, {name:n}); else render(true); }
-  else if (t.id === "amtIn") { const n = parseFloat(t.value.replace(",", ".")); t.blur(); if (n > 0) DB.set("items", k, {qty:Math.round(n * 100) / 100}); else render(true); }
+  else if (t.id === "amtIn") { const n = parseFloat(t.value.replace(",", ".")); t.blur(); if (n > 0) DB.set(col, k, {qty:Math.round(n * 100) / 100}); else render(true); }
   else if (t.id === "catSel") { t.blur(); ACT.setcat(k, t.value); }
   else if (t.id === "storeSel") { t.blur(); ACT.setstore(k, t.value); }
 });
 document.addEventListener("keydown", e => {
   const t = e.target; if (e.key !== "Enter" || !t.dataset) return;
   if (t.dataset.enter) { e.preventDefault(); ACT[t.dataset.enter](); }
-  else if (t.id === "amtIn" || t.id === "noteIn" || t.id === "tplName" || t.id === "stoName") t.blur();
+  else if (t.id === "amtIn" || t.id === "noteIn" || t.id === "tplName" || t.id === "stoName" || t.dataset.ln) t.blur();
 });
 document.addEventListener("focusout", e => { if ($("page").contains(e.target)) setTimeout(() => { if (route !== "lijst") render(); }, 0); });
 $("addForm").addEventListener("submit", e => {
