@@ -905,7 +905,7 @@ function renderList(){
     const nx = shop ? ts[si + 1] || null : null, prv = shop ? ts[si - 1] || null : null;
     for (const c of order(st)) {
       const rows = mine.filter(([, v]) => catOf(v.cat) === c);
-      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx, !shop && multiStore() ? st : null, false, prv)).join("") + "</div>";
+      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx, null, false, prv)).join("") + "</div>";
     }
   });
   if (miss.length) h += "<h3 class='ch'>Niet gevonden<span class='n'>" + miss.length + "</span></h3><div class='group'>" + miss.map(([k, v]) => missHtml(k, v, ts[ids.indexOf(storeOf(k, v, ids)) + 1] || null)).join("") + "</div>";
