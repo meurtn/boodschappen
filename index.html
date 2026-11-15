@@ -96,6 +96,16 @@ h1,h2,h3,p{margin:0}
 .popi .pc{width:18px;display:grid;place-items:center;flex:none}
 .popi .pc .i{width:17px;height:17px}
 .popi .pn{font-size:13px;color:var(--q2);font-variant-numeric:tabular-nums;font-weight:500}
+.poph{font-size:12.5px;color:var(--mute);font-weight:500;padding:6px 10px 4px}
+.stb{width:36px;height:36px;display:grid;place-items:center;flex:none;border-radius:50%;margin-right:6px;transition:transform .12s}
+.stb:active{transform:scale(.9)}
+.stb.on .lg{box-shadow:0 0 0 2px var(--acc)}
+.lgnone{display:grid;place-items:center;background:var(--fill);color:var(--mute);box-shadow:none}
+.lgnone .i{width:13px;height:13px}
+.ch.sub .lg{margin-right:2px}
+.btn.fixw{min-width:112px}
+.pagecol{display:flex;flex-direction:column;min-height:calc(100vh - 170px - env(safe-area-inset-top) - env(safe-area-inset-bottom))}
+.pbottom{margin-top:auto;padding-bottom:8px}
 .popsep{height:1px;background:var(--line);margin:6px 4px}
 .inl.left{text-align:left}
 
@@ -116,7 +126,8 @@ h1,h2,h3,p{margin:0}
 .hint{color:var(--mute);font-size:13px;margin:10px 2px 0}
 .note{color:var(--mute);font-size:13px;margin:0 2px 4px}
 .offline{font-size:13px;color:var(--mute);text-align:center;padding:6px 0 0}
-.shead{display:flex;align-items:center;gap:10px;margin:26px 2px -8px;font-size:17px;font-weight:600;letter-spacing:-.005em}
+.shead{display:flex;align-items:center;gap:10px;margin:30px 2px -8px;padding-top:22px;border-top:1px solid var(--line);font-size:17px;font-weight:600;letter-spacing:-.005em}
+.shead.first{border-top:0;padding-top:0;margin-top:22px}
 .lg{border-radius:50%;flex:none;object-fit:cover;background:#fff;box-shadow:0 0 0 1px var(--line)}
 .lgf{display:grid;place-items:center;color:#fff;font-weight:600;box-shadow:none;line-height:1}
 .lgbtn{flex:none;display:grid;place-items:center;margin-right:2px}
@@ -274,10 +285,10 @@ body:has(.sorting){user-select:none;-webkit-user-select:none}
 :root[data-dens=c] body.shop .row{min-height:46px}:root[data-dens=c] body.shop .nm{font-size:16px}:root[data-dens=c] body.shop .tick .c{width:23px;height:23px}
 :root[data-dens=d] body.shop .row{min-height:42px}:root[data-dens=d] body.shop .nm{font-size:15.5px}:root[data-dens=d] body.shop .tick .c{width:21px;height:21px}
 .sep{height:1px;background:var(--line);border:0;margin:28px 2px 6px}
-.range{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px 10px;margin-bottom:10px}
+.range{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 30px 12px;margin-bottom:10px}
 .range input{width:100%;margin:0;accent-color:var(--acc);height:28px}
-.range .ticks{display:flex;justify-content:space-between;font-size:12.5px;color:var(--mute);margin-top:2px}
-.range .ticks span{flex:1;text-align:center}.range .ticks span:first-child{text-align:left}.range .ticks span:last-child{text-align:right}
+.range .ticks{position:relative;height:18px;margin:4px 8px 0;font-size:12.5px;color:var(--mute)}
+.range .ticks span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
 .range .ticks span.on{color:var(--acc);font-weight:500}
 .preview{pointer-events:none}
 /* tabbalk */
@@ -474,7 +485,7 @@ function dueList(){
   return allProducts().filter(p => { if (S.items[p.k] || p.snooze > Date.now()) return false; const r = rhythm(p); if (r && r.due) { p.r = r; return true; } return false; })
     .sort((a, b) => b.r.since / b.r.days - a.r.since / a.r.days).slice(0, 6);
 }
-const slim = v => ({name:v.name, qty:v.qty || 1, unit:v.unit || "", cat:v.cat, note:v.note || ""});
+const slim = v => ({name:v.name, qty:v.qty || 1, unit:v.unit || "", cat:v.cat, note:v.note || "", store:v.store || ""});
 const dateStr = at => new Date(at).toLocaleDateString("nl-NL", {weekday:"long", day:"numeric", month:"long"});
 function order(st){ const o = ((st || store()).order || DEFAULT_ORDER).filter(c => CAT[c]); for (const c of DEFAULT_ORDER) if (!o.includes(c)) o.push(c); return o; }
 
@@ -569,7 +580,7 @@ function addItem(rawName, a, extra, quiet){
   } else {
     const unit = a.explicit ? (a.unit || "") : ((p && p.unit) || "");
     const qty = a.explicit ? a.qty : ((p && p.unit && p.dq) || defQty(unit));
-    DB.set("items", k, {name, cat, qty, unit, note:extra.note || "", checked:false, by:me(), at:Date.now()});
+    DB.set("items", k, {name, cat, qty, unit, note:extra.note || "", store:extra.store || "", checked:false, by:me(), at:Date.now()});
     if (!quiet && !p && cat === "overig") toast(name + " staat bij Overig", "Categorie kiezen", () => go("product", k));
   }
   DB.set("products", k, {name, cat, n:((S.products[k] && S.products[k].n) || 0) + 1, last:Date.now(), ...(a.explicit && a.unit ? {unit:a.unit, dq:a.qty} : {})});
@@ -611,11 +622,11 @@ function setList(map){ Object.keys(S.items).forEach(k => { if (!map[k]) DB.del("
 function applyPack(label, items, replace){
   items = items || [];
   if (!replace) {
-    items.forEach(i => addItem(i.name, {qty:i.qty || 1, unit:i.unit || "", explicit:true}, {cat:i.cat, note:i.note}, true));
+    items.forEach(i => addItem(i.name, {qty:i.qty || 1, unit:i.unit || "", explicit:true}, {cat:i.cat, note:i.note, store:i.store || ""}, true));
     home(); return toast(label + " toegevoegd: " + nProd(items.length));
   }
   const old = {...S.items}, map = {};
-  items.forEach(i => { const k = keyOf(i.name); if (k) map[k] = {name:i.name, cat:i.cat || guessCat(i.name), qty:i.qty || 1, unit:i.unit || "", note:i.note || "", checked:false, store:"", by:me(), at:Date.now()}; });
+  items.forEach(i => { const k = keyOf(i.name); if (k) map[k] = {name:i.name, cat:i.cat || guessCat(i.name), qty:i.qty || 1, unit:i.unit || "", note:i.note || "", checked:false, store:i.store || "", by:me(), at:Date.now()}; });
   setList(map); home(); toast(label + " staat klaar als nieuwe lijst", "Ongedaan maken", () => setList(old));
 }
 const UNIT_ALIAS = {kg:"kg", kilo:"kg", gram:"g", gr:"g", g:"g", ml:"ml", cl:"ml", liter:"l", l:"l"};
@@ -770,24 +781,25 @@ function pick(i){
 }
 
 /* ---------- de lijst ---------- */
-function rowHtml(k, it, nx, pv, x){
+function rowHtml(k, it, nx, pv, x, pr){
   const P = x ? "x" : "";
   const q = it.qty || 1, bd = badge(it), ka = " data-k='" + esc(k) + "'";
   return "<div class='row" + (it.checked ? " done" : "") + (k === flashKey ? " flash" : "") + (tick.k === k && Date.now() - tick.t < 400 ? " just" : "") + "' data-row='" + esc(k) + "'" + (x ? " data-x='1'" : "") + ">" +
-    (it.checked ? "" : swActs(k, nx, x)) + "<div class='rin'>" +
+    (it.checked ? "" : swActs(k, nx, x, pr)) + "<div class='rin'>" +
     "<button class='tick' data-a='" + P + "toggle'" + ka + " aria-label='" + (it.checked ? "Terugzetten" : "Afvinken") + "'><span class='c'>" + ico("check") + "</span></button>" +
     "<button class='rmain' data-a='" + P + "rowtap'" + ka + "><span class='nm'>" + esc(it.name) + "</span>" + (it.note ? "<span class='nt'>" + esc(it.note) + "</span>" : "") + "</button>" +
     (it.checked ? (bd ? "<span class='qty'>" + bd + "</span>" : "") :
       (bd ? "<span class='qty shoponly'>" + bd + "</span>" : "") +
+      (pv ? "<button class='stb' data-a='storepick' data-kind='items'" + ka + " aria-label='Kopen bij " + esc(pv.name) + "' aria-haspopup='menu'>" + logoHtml(pv.name, pv.logo, 22) + "</button>" : "") +
       "<div class='step'><button data-a='" + P + "minus'" + ka + " aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(it) + "</b><button data-a='" + P + "plus'" + ka + " aria-label='Meer'>" + ico("plus") + "</button></div>") +
     "</div></div>";
 }
 // Achter elke regel in de winkelmodus: opties die verschijnen als je opzij veegt.
-function swActs(k, nx, x){
+function swActs(k, nx, x, pr){
   const a = " data-k='" + esc(k) + "'" + (x ? " data-x='1'" : "");
-  const b = (nx ? "<button class='sa next' data-a='swnext'" + a + " data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "' aria-label='Naar " + esc(nx.name) + "'>" + ico("arrowR") + "</button>" : "") +
+  const b = (pr ? "<button class='sa next' data-a='swnext'" + a + " data-s='" + esc(pr.id) + "' data-n='" + esc(pr.name) + "' aria-label='Terug naar " + esc(pr.name) + "'>" + ico("arrowL") + "</button>" : "") + (nx ? "<button class='sa next' data-a='swnext'" + a + " data-s='" + esc(nx.id) + "' data-n='" + esc(nx.name) + "' aria-label='Naar " + esc(nx.name) + "'>" + ico("arrowR") + "</button>" : "") +
     "<button class='sa miss' data-a='swmiss'" + a + " aria-label='Niet gevonden'>" + ico("nofind") + "</button>";
-  return "<div class='acts' data-n='" + (nx ? 2 : 1) + "'><div class='side l'>" + b + "</div><div class='side r'>" + b + "</div></div>";
+  return "<div class='acts' data-n='" + (1 + (nx ? 1 : 0) + (pr ? 1 : 0)) + "'><div class='side l'>" + b + "</div><div class='side r'>" + b + "</div></div>";
 }
 // Niet gevonden (alleen in de winkelmodus): tik om terug te zetten, of door naar de volgende winkel.
 function missHtml(k, it, nx, x){
@@ -842,19 +854,31 @@ function popHtml(){
   return "<div class='pop' role='menu'>" + allLists().map(([id, n]) => { const c = openCount(id); return "<button class='popi" + (id === cur ? " on" : "") + "' data-a='setlist' data-k='" + esc(id) + "' role='menuitemradio' aria-checked='" + (id === cur) + "'><span class='pc'>" + (id === cur ? ico("check") : "") + "</span>" + (id === "boodschappen" ? "" : logoHtml(n, (S.xlists[id] || {}).logo, 22)) + "<span class='grow'>" + esc(n) + "</span>" + (c ? "<span class='pn'>" + c + "</span>" : "") + "</button>"; }).join("") +
     "<div class='popsep'></div><button class='popi' data-a='newlist'><span class='pc'>" + ico("plus") + "</span><span class='grow'>Nieuwe lijst</span></button><button class='popi' data-a='nav' data-k='lijsten'><span class='pc'>" + ico("edit") + "</span><span class='grow'>Lijsten beheren</span></button></div>";
 }
-function openPop(){
-  const btn = document.querySelector("#barIn [data-a=lists]"); if (!btn) return;
+let popAnchor = null;
+function openMenu(btn, html){
+  closePop(true);
   const r = btn.getBoundingClientRect(), host = $("popHost");
-  host.innerHTML = popHtml();
-  const p = host.firstChild;
-  p.style.top = (r.bottom + 6) + "px"; p.style.right = Math.max(12, window.innerWidth - r.right) + "px";
-  btn.classList.add("on"); btn.setAttribute("aria-expanded", "true");
+  host.innerHTML = html;
+  const p = host.firstChild, h = p.offsetHeight, below = r.bottom + 6 + h < window.innerHeight - 80;
+  p.style.top = (below ? r.bottom + 6 : Math.max(12, r.top - 6 - h)) + "px"; p.style.right = Math.max(12, window.innerWidth - r.right) + "px";
+  p.style.transformOrigin = below ? "top right" : "bottom right";
+  popAnchor = btn; btn.classList.add("on"); btn.setAttribute("aria-expanded", "true");
 }
-function closePop(){
-  const host = $("popHost"), p = host.firstChild; if (!p) return;
-  const btn = document.querySelector("#barIn [data-a=lists]"); if (btn) { btn.classList.remove("on"); btn.setAttribute("aria-expanded", "false"); }
+function openPop(){ const btn = document.querySelector("#barIn [data-a=lists]"); if (btn) openMenu(btn, popHtml()); }
+function closePop(now){
+  const host = $("popHost"), p = host.firstChild;
+  if (popAnchor) { popAnchor.classList.remove("on"); popAnchor.setAttribute("aria-expanded", "false"); popAnchor = null; }
+  if (!p) return;
+  if (now === true) { host.innerHTML = ""; return; }
   p.classList.add("out"); setTimeout(() => { if (host.firstChild === p) host.innerHTML = ""; }, 140);
 }
+// Keuzemenu "Kopen bij" voor een product op de lijst of in een template.
+function storeMenuHtml(kind, k, i, cur){
+  const a = " data-kind='" + kind + "' data-k='" + esc(k) + "'" + (i != null ? " data-i='" + i + "'" : "");
+  const opt = (id, label, lg) => "<button class='popi" + (id === cur ? " on" : "") + "' data-a='pickstore'" + a + " data-s='" + esc(id) + "'><span class='pc'>" + (id === cur ? ico("check") : "") + "</span>" + lg + "<span class='grow'>" + label + "</span></button>";
+  return "<div class='pop' role='menu'><div class='poph'>Kopen bij</div>" + storeList().map(s => opt(s.id, esc(s.name), logoHtml(s.name, s.logo, 22))).join("") + "<div class='popsep'></div>" + opt("", "Maakt niet uit", "") + "</div>";
+}
+const multiStore = () => storeList().length > 1;
 const popOpen = () => !!($("popHost").firstChild && !$("popHost").firstChild.classList.contains("out"));
 function renderList(){
   const shop = document.body.classList.contains("shop"), cur = curList();
@@ -873,13 +897,15 @@ function renderList(){
   if (due.length) h += "<h3 class='ch'>Tijd voor<span class='n'>volgens jullie koopritme</span></h3><div class='chips'>" + due.map(p => "<span class='chip duo'><button data-a='dueadd' data-k='" + esc(p.k) + "'>" + esc(p.name) + "<small>om de " + p.r.days + " dagen</small></button><button data-a='snooze' data-k='" + esc(p.k) + "' aria-label='Nu niet'>" + ico("x") + "</button></span>").join("") + "</div>";
   if (!all.length) h += empty("list", "De lijst is leeg", "Typ hierboven wat je nodig hebt, of begin met een template of een vorige lijst.") + "<div class='line center'><button class='btn sec' data-a='nav' data-k='templates'>Templates</button><button class='btn sec' data-a='nav' data-k='vorige-lijsten'>Vorige lijsten</button></div>";
   else if (!open.length && !miss.length) h += empty("check", "Alles in het karretje", "Rond af om het bezoek te bewaren bij Vorige lijsten.") + "<div class='line center'><button class='btn' data-a='finish'>Afronden</button></div>";
+  let firstHead = true;
   ts.forEach((st, si) => {
     const mine = open.filter(([k, v]) => storeOf(k, v, ids) === st.id); if (!mine.length) return;
-    if (multi) h += "<div class='shead'>" + logoHtml(st.name, st.logo, 26) + "<span>" + esc(st.name) + "</span><small>" + mine.length + " te pakken</small></div>";
-    const nx = shop ? ts[si + 1] || null : null;
+    const isFirst = firstHead; firstHead = false;
+    if (multi) h += "<div class='shead" + (isFirst ? " first" : "") + "'>" + logoHtml(st.name, st.logo, 26) + "<span>" + esc(st.name) + "</span><small>" + mine.length + " te pakken</small></div>";
+    const nx = shop ? ts[si + 1] || null : null, prv = shop ? ts[si - 1] || null : null;
     for (const c of order(st)) {
       const rows = mine.filter(([, v]) => catOf(v.cat) === c);
-      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx)).join("") + "</div>";
+      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx, !shop && multiStore() ? st : null, false, prv)).join("") + "</div>";
     }
   });
   if (miss.length) h += "<h3 class='ch'>Niet gevonden<span class='n'>" + miss.length + "</span></h3><div class='group'>" + miss.map(([k, v]) => missHtml(k, v, ts[ids.indexOf(storeOf(k, v, ids)) + 1] || null)).join("") + "</div>";
@@ -908,11 +934,19 @@ PAGES["bijna-op"] = () => {
 };
 PAGES.templates = () => {
   const ts = Object.entries(S.templates).sort((a, b) => a[1].name.localeCompare(b[1].name)), n = Object.keys(S.items).length, st = store();
-  let h = ts.length ? "<div class='group'>" + ts.map(([id, t]) => navCell("template", id, esc(t.name), nProd((t.items || []).length) + (storeName(t.store) ? " · " + esc(storeName(t.store)) : ""))).join("") + "</div>" : empty("layers", "Nog geen templates", "Maak hieronder een nieuwe template, of bewaar je huidige lijst als template.");
-  h += "<hr class='sep'><h3 class='ch'>Nieuwe template</h3><div class='line'><input class='field' id='tNew' placeholder='Naam, bv. Gourmet' enterkeyhint='done' autocapitalize='sentences' data-enter='tnew'><button class='btn' data-a='tnew'>Maken</button></div><p class='hint'>Begint leeg. Daarna voeg je de producten toe.</p>";
-  h += "<h3 class='ch'>Huidige lijst bewaren als template</h3>" + (n ? "<div class='line'><input class='field' id='tName' placeholder='Naam, bv. Weekmenu' enterkeyhint='done' autocapitalize='sentences' data-enter='tsave'><button class='btn' data-a='tsave'>Bewaren</button></div>" + (st.id !== "standaard" ? "<label class='check'><input type='checkbox' id='tStore'>Alleen voor " + esc(st.name) + "</label>" : "") + "<p class='hint'>Op de lijst: " + nProd(n) + ".</p>" : "<p class='hint'>Zet eerst producten op de lijst.</p>");
+  let h = "<div class='pagecol'><div>" + (ts.length ? "<div class='group'>" + ts.map(([id, t]) => navCell("template", id, esc(t.name), nProd((t.items || []).length) + (storeName(t.store) ? " · " + esc(storeName(t.store)) : ""))).join("") + "</div>" : empty("layers", "Nog geen templates", "Maak hieronder een nieuwe template, of bewaar je huidige lijst als template.")) + "</div><div class='pbottom'>";
+  h += "<hr class='sep'><h3 class='ch'>Nieuwe template</h3><div class='line'><input class='field' id='tNew' placeholder='Naam, bv. Gourmet' enterkeyhint='done' autocapitalize='sentences' data-enter='tnew'><button class='btn fixw' data-a='tnew'>Maken</button></div><p class='hint'>Begint leeg. Daarna voeg je de producten toe.</p>";
+  h += "<h3 class='ch'>Huidige lijst bewaren als template</h3>" + (n ? "<div class='line'><input class='field' id='tName' placeholder='Naam, bv. Weekmenu' enterkeyhint='done' autocapitalize='sentences' data-enter='tsave'><button class='btn fixw' data-a='tsave'>Bewaren</button></div>" + (st.id !== "standaard" ? "<label class='check'><input type='checkbox' id='tStore'>Alleen voor " + esc(st.name) + "</label>" : "") + "<p class='hint'>Op de lijst: " + nProd(n) + ".</p>" : "<p class='hint'>Zet eerst producten op de lijst.</p>") + "</div></div>";
   return {title:"Templates", html:h};
 };
+// Producten van een template per winkel groeperen, zodra er een winkel aan een product hangt.
+function tplGroups(items, tpl){
+  const idx = items.map((i, n) => [i, n]), sl = storeList();
+  if (!idx.some(([i]) => i.store && sl.some(s => s.id === i.store))) return [[false, idx]];
+  const g = sl.map(s => [s, idx.filter(([i]) => i.store === s.id)]).filter(x => x[1].length);
+  const rest = idx.filter(([i]) => !sl.some(s => s.id === i.store));
+  return rest.length ? g.concat([[null, rest]]) : g;
+}
 function packPage(kind, argName){
   return () => {
     const id = args[argName], p = S[kind][id]; if (!p) return gone();
@@ -925,9 +959,9 @@ function packPage(kind, argName){
       "<p class='hint'>Toevoegen telt op bij wat al op de lijst staat. Als nieuwe lijst vervangt de huidige lijst.</p>" +
       "<h3 class='ch'>Producten</h3>" +
       (tpl ? "<div class='line' style='margin-bottom:10px'><input class='field' id='tplAdd' placeholder='bv. 2 paprika' enterkeyhint='done' autocapitalize='sentences' data-enter='padd'><button class='btn' data-a='padd'>Toevoegen</button></div>" : "") +
-      (items.length ? "<div class='group'>" + items.map((i, n) => { const b = " data-k='" + esc(id) + "' data-i='" + n + "'"; return "<div class='cell" + (args.padded === n ? " flash" : "") + "'><span class='grow'>" + esc(i.name) + "</span>" + (tpl
+      (items.length ? tplGroups(items, tpl).map(([gs, list]) => (gs === false ? "" : "<h3 class='ch sub'>" + (gs ? logoHtml(gs.name, gs.logo, 18) + esc(gs.name) : "Elke winkel") + "</h3>") + "<div class='group'>" + list.map(([i, n]) => { const b = " data-k='" + esc(id) + "' data-i='" + n + "'"; return "<div class='cell" + (args.padded === n ? " flash" : "") + "'><span class='grow'>" + esc(i.name) + "</span>" + (tpl && multiStore() ? "<button class='stb' data-a='storepick' data-kind='tpl'" + b + " aria-label='Kopen bij' aria-haspopup='menu'>" + (gs ? logoHtml(gs.name, gs.logo, 22) : "<span class='lg lgnone' style='width:22px;height:22px'>" + ico("pin") + "</span>") + "</button>" : "") + (tpl
         ? "<div class='step'><button data-a='pstep'" + b + " data-d='-1' aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(i) + "</b><button data-a='pstep'" + b + " data-d='1' aria-label='Meer'>" + ico("plus") + "</button></div><button class='ib sm' data-a='pitem'" + b + " aria-label='Uit template halen'>" + ico("x") + "</button>"
-        : "<span class='qty'>" + esc(badge(i)) + "</span>") + "</div>"; }).join("") + "</div>" : "<p class='hint' style='margin:0 2px 14px'>Deze template is nog leeg.</p>") +
+        : "<span class='qty'>" + esc(badge(i)) + "</span>") + "</div>"; }).join("") + "</div>").join("") : "<p class='hint' style='margin:0 2px 14px'>Deze template is nog leeg.</p>") +
       "<button class='btn text danger wide' data-a='pdel'" + a + ">" + (tpl ? "Template verwijderen" : "Uit Vorige lijsten verwijderen") + "</button>"};
   };
 }
@@ -988,7 +1022,7 @@ PAGES.instellingen = () => {
   const t = pref.get("theme", "auto");
   return {title:"Instellingen", html:
     "<h3 class='ch'>Weergave</h3><div class='seg'>" + [["auto", "Systeem"], ["light", "Licht"], ["dark", "Donker"]].map(o => "<button data-a='theme' data-k='" + o[0] + "' class='" + (t === o[0] ? "on" : "") + "'>" + o[1] + "</button>").join("") + "</div><p class='hint' style='margin-top:-4px'>Geldt alleen voor dit apparaat.</p>" +
-    "<h3 class='ch'>Compactheid</h3><div class='range'><input type='range' id='densIn' min='0' max='3' step='1' value='" + DENS.indexOf(pref.get("dens", "a")) + "' aria-label='Compactheid van de lijst'><div class='ticks'>" + DENS_LABEL.map((l, i) => "<span class='" + (DENS[i] === pref.get("dens", "a") ? "on" : "") + "'>" + l + "</span>").join("") + "</div></div>" +
+    "<h3 class='ch'>Compactheid</h3><div class='range'><input type='range' id='densIn' min='0' max='3' step='1' value='" + DENS.indexOf(pref.get("dens", "a")) + "' aria-label='Compactheid van de lijst'><div class='ticks'>" + DENS_LABEL.map((l, i) => "<span style='left:" + (i * 100 / 3) + "%' class='" + (DENS[i] === pref.get("dens", "a") ? "on" : "") + "'>" + l + "</span>").join("") + "</div></div>" +
     "<div class='group preview' aria-hidden='true'>" + [["Bananen", 1, ""], ["Gehakt", 500, "g"], ["Melk", 2, ""]].map(([n, q, un], i) => rowHtml("vb" + i, {name:n, qty:q, unit:un})).join("") + "</div>" +
     "<p class='hint' style='margin:-4px 2px 0'>Geldt voor de lijsten op dit apparaat, ook in de winkelmodus. Die blijft per stand iets ruimer, zodat je onderweg makkelijk afvinkt.</p>" +
     "<h3 class='ch'>Boodschappen</h3><div class='group'>" + navCell("schappen", undefined, "Schappen", CATS.length + " schappen", "tag") + "</div>" +
@@ -1130,6 +1164,23 @@ const ACT = {
   logo:(k, t) => { logoTarget = {col:t.dataset.c, id:k}; const f = $("logoFile"); f.value = ""; f.click(); },
   logodel:(k, t) => { const col = t.dataset.c, old = (col === "stores" ? storeList().find(s => s.id === k) : S.xlists[k]) || {}; logoSave(col, k, ""); toast("Logo verwijderd", "Ongedaan maken", () => logoSave(col, k, old.logo || "")); },
   lists:() => popOpen() ? closePop() : openPop(),
+  storepick:(k, t) => {
+    if (popOpen() && popAnchor === t) return closePop();
+    const kind = t.dataset.kind, i = t.dataset.i;
+    const cur = kind === "tpl" ? ((S.templates[k].items || [])[+i] || {}).store || "" : (S.items[k] || {}).store || (S.products[k] || {}).store || "";
+    openMenu(t, storeMenuHtml(kind, k, i, cur));
+  },
+  pickstore:(k, t) => {
+    closePop(); const s = t.dataset.s, nm = storeName(s);
+    if (t.dataset.kind === "tpl") {
+      const tp = S.templates[k]; if (!tp) return;
+      const items = (tp.items || []).map(x => ({...x})), it = items[+t.dataset.i]; if (!it) return;
+      it.store = s; args.padded = +t.dataset.i; DB.set("templates", k, {items}); render(true); return;
+    }
+    const it = S.items[k]; if (!it) return;
+    flashKey = k; DB.set("items", k, {store:s});
+    if (s && !tripStores().some(x => x.id === s)) toast(nm + " staat niet in je route van vandaag", "Route aanpassen", () => go("winkels"));
+  },
   newlist:() => { closePop(); go("lijsten"); setTimeout(() => { const i = $("lName"); if (i) i.focus(); }, 300); },
   setlist:k => { closePop(); if (k === curList()) return; pref.set("list", k); $("q").value = ""; setShop(false, true); render(true); window.scrollTo(0, 0); const m = $("pgList"); m.classList.remove("swap"); void m.offsetWidth; m.classList.add("swap"); },
   ladd:() => {
@@ -1244,7 +1295,7 @@ const ACT = {
 };
 document.addEventListener("click", e => {
   const t = e.target.closest("[data-a]");
-  if (popOpen() && !e.target.closest(".pop") && !(t && t.dataset.a === "lists")) { closePop(); if (!t || t.closest("#barIn")) return; }
+  if (popOpen() && !e.target.closest(".pop") && !(t && t === popAnchor)) { closePop(); if (!t || t.closest("#barIn")) return; }
   if (t && t.dataset.a === "modalbg") { if (e.target === t) closeModal(); return; }
   if (!t || t.disabled || !ACT[t.dataset.a]) return;
   const ae = document.activeElement;
