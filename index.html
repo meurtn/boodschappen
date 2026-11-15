@@ -523,7 +523,7 @@ const product = k => { const c = CATALOG[k], p = S.products[k]; return (c || (p 
 const allProducts = () => { const ks = new Set([...Object.keys(CATALOG), ...Object.keys(S.products)]); return [...ks].map(product).filter(Boolean); };
 const onList = k => S.items[k] && !S.items[k].checked;
 function guessCat(name){ const k = " " + keyOf(name) + " "; for (const [c, words] of Object.entries(GUESS)) if (words.some(w => k.includes(w))) return c; return "overig"; }
-function storeList(){ const o = {standaard:{name:"Standaard"}, ...S.stores}; return Object.entries(o).map(([id, s]) => ({id, name:s.name || id, order:s.order, logo:s.logo || ""})).sort((a, b) => a.name.localeCompare(b.name, "nl", {sensitivity:"base"})); }
+function storeList(){ const o = {standaard:{name:"Standaard"}, ...S.stores}; return Object.entries(o).map(([id, s]) => ({id, name:s.name || id, order:s.order, logo:s.logo || "", plain:!!s.plain})).sort((a, b) => a.name.localeCompare(b.name, "nl", {sensitivity:"base"})); }
 // De route van vandaag: de winkels in de volgorde waarin je ze bezoekt (per apparaat onthouden).
 function tripStores(){ const all = storeList(), t = trip.map(id => all.find(s => s.id === id)).filter(Boolean); return t.length ? t : [all.find(s => s.id === "standaard")]; }
 function setTrip(t){ trip = t; pref.set("trip", JSON.stringify(t)); render(); }
@@ -636,7 +636,11 @@ function addItem(rawName, a, extra, quiet){
   } else {
     const unit = a.explicit ? (a.unit || "") : ((p && p.unit) || "");
     const qty = a.explicit ? a.qty : ((p && p.unit && p.dq) || defQty(unit));
-    DB.set("items", k, {name, cat, qty, unit, note:extra.note || "", store:extra.store || "", checked:false, by:me(), at:Date.now()});
+    // Zonder opgegeven lijst gaat een product naar de lijst van zijn vaste winkel (of Boodschappen).
+    const pst = (S.products[k] && S.products[k].store) || "", store = extra.store !== undefined ? extra.store : (pst && storeList().some(s => s.id === pst) ? pst : "");
+    DB.set("items", k, {name, cat, qty, unit, note:extra.note || "", store, checked:false, by:me(), at:Date.now()});
+    const eff = store || (useBs() ? "" : defStore());
+    if (!quiet && extra.store === undefined && eff && curList() !== "s:" + eff) toast(name + " staat op de lijst " + storeName(eff));
     if (!quiet && !p && cat === "overig") toast(name + " staat bij Overig", "Categorie kiezen", () => go("product", k));
   }
   DB.set("products", k, {name, cat, n:((S.products[k] && S.products[k].n) || 0) + 1, last:Date.now(), ...(a.explicit && a.unit ? {unit:a.unit, dq:a.qty} : {})});
@@ -678,12 +682,14 @@ function setList(map){ Object.keys(S.items).forEach(k => { if (!map[k]) DB.del("
 function applyPack(label, items, replace){
   items = items || [];
   if (!replace) {
-    items.forEach(i => addItem(i.name, {qty:i.qty || 1, unit:i.unit || "", explicit:true}, {cat:i.cat, note:i.note, store:i.store || ""}, true));
+    items.forEach(i => addItem(i.name, {qty:i.qty || 1, unit:i.unit || "", explicit:true}, {cat:i.cat, note:i.note, store:i.store || undefined}, true));
     home(); return toast(label + " toegevoegd: " + nProd(items.length));
   }
-  const old = {...S.items}, map = {};
-  items.forEach(i => { const k = keyOf(i.name); if (k) map[k] = {name:i.name, cat:i.cat || guessCat(i.name), qty:i.qty || 1, unit:i.unit || "", note:i.note || "", checked:false, store:i.store || "", by:me(), at:Date.now()}; });
-  setList(map); home(); toast(label + " staat klaar als nieuwe lijst", "Ongedaan maken", () => setList(old));
+  // Als nieuwe lijst: alleen de lijsten waar deze producten op horen worden vervangen, de andere blijven staan.
+  const old = {...S.items}, map = {}, lists = new Set(), keep = {};
+  items.forEach(i => { const k = keyOf(i.name); if (!k) return; const ps = (S.products[k] && S.products[k].store) || "", st = i.store || (ps && storeList().some(s => s.id === ps) ? ps : ""); lists.add(st); map[k] = {name:i.name, cat:i.cat || guessCat(i.name), qty:i.qty || 1, unit:i.unit || "", note:i.note || "", checked:false, store:st, by:me(), at:Date.now()}; });
+  Object.entries(S.items).forEach(([k, v]) => { if (!map[k] && !lists.has(listOf(k, v))) keep[k] = v; });
+  setList({...keep, ...map}); home(); toast(label + " staat klaar als nieuwe lijst", "Ongedaan maken", () => setList(old));
 }
 const UNIT_ALIAS = {kg:"kg", kilo:"kg", gram:"g", gr:"g", g:"g", ml:"ml", cl:"ml", liter:"l", l:"l"};
 function parse(t){
@@ -730,7 +736,7 @@ try { mq.addEventListener("change", applyTheme); } catch {}
 
 /* ---------- navigatie ---------- */
 const TABS = [["lijst", "Lijst", "list"], ["bijna-op", "Bijna op", "home"], ["templates", "Templates", "layers"], ["meer", "Meer", "more"]];
-const PARENT = {schappen:"instellingen", schap:"schappen", ding:"lijst", lijsten:"lijst", winkels:"meer", "vorige-lijsten":"meer", instellingen:"meer", looproute:"winkels", template:"templates", bezoek:"vorige-lijsten", product:"lijst"};
+const PARENT = {schappen:"instellingen", schap:"schappen", ding:"lijst", lijsten:"lijst", winkels:"meer", "vorige-lijsten":"meer", instellingen:"meer", looproute:"lijsten", template:"templates", bezoek:"vorige-lijsten", product:"lijst"};
 const NEEDS = {schap:1, ding:1, looproute:1, template:1, bezoek:1, product:1};
 const PAGES = {}, args = {}, scrolls = {};
 let route = null, depth = 0, navDir = "", tick = {k:"", t:0};
@@ -747,7 +753,12 @@ function back(){
   if (depth > 0) { depth--; history.back(); } else setHash(PARENT[route] || "lijst", true);
 }
 function home(){ if (route !== "lijst") go("lijst"); }
-function boot(){ route = null; onRoute(); }
+function boot(){ migrate(); route = null; onRoute(); }
+function migrate(){
+  if (S.state && S.state.mig && S.state.mig.v >= 2) return;
+  Object.entries(S.items).forEach(([k, v]) => { const ps = S.products[k] && S.products[k].store; if (!v.store && ps && storeList().some(s => s.id === ps)) DB.set("items", k, {store:ps}); });
+  DB.set("state", "mig", {v:2});
+}
 function onRoute(){
   if (!ready) return;
   let name = hashName();
@@ -792,7 +803,7 @@ function renderSug(){
   const arg = parse(inp.value), name = arg.name, k = keyOf(name);
   sugArg = arg; sugRows = []; enterIdx = -1;
   const xl = curList();
-  if (xl !== "boodschappen") {
+  if (isX(xl)) {
     const known = Object.entries((S.xlists[xl] && S.xlists[xl].known) || {}), on = key => { const it = S.xitems[xl + "|" + key]; return it && !it.checked ? it : null; };
     if (!k) {
       const f = known.filter(([key]) => !on(key)).sort((a, b) => a[1].localeCompare(b[1])).slice(0, 16);
@@ -832,7 +843,14 @@ function renderSug(){
 }
 function pick(i){
   const r = sugRows[i]; if (!r) return;
-  if (curList() !== "boodschappen") xadd(r.name, sugArg); else addItem(r.name, sugArg, r.isNew ? {cat:r.cat} : null);
+  const c = curList();
+  if (isX(c)) xadd(r.name, sugArg);
+  else {
+    const st = c === "boodschappen" ? "" : c.slice(2);
+    addItem(r.name, sugArg, {...(r.isNew ? {cat:r.cat} : {}), store:st});
+    // Toevoegen op een winkellijst onthoudt die winkel voor dit product (voor Bijna op, koopritme en templates).
+    if (st) { const k = keyOf(r.name), p = product(k); DB.set("products", k, {name:(p && p.name) || cap(r.name), cat:(p && p.cat) || r.cat || guessCat(r.name), store:st}); }
+  }
   const inp = $("q"); inp.value = ""; inp.focus(); renderSug();
 }
 
@@ -869,7 +887,17 @@ const listBtnHtml = cur => "<button class='ibb" + (allLists().some(([id]) => id 
 // In de lijstmodus: korte melding als er al iets in het karretje ligt (een winkelronde die nog niet is afgerond).
 const cartNote = n => "<div class='cartnote'><span class='grow'>" + nProd(n) + " al in het karretje</span><button class='tb' data-a='shop'>Verder winkelen</button><button class='tb' data-a='finish'>Afronden</button></div>";
 // ---------- extra lijsten (Action, Ikea, ...): eenvoudige lijstjes zonder schappen of looproute
-const curList = () => { const c = pref.get("list", "boodschappen"); return c !== "boodschappen" && S.xlists[c] ? c : "boodschappen"; };
+// Lijsten: "boodschappen" (maakt niet uit), "s:<winkel>" (gekoppeld aan een winkel, met logo) of een losse lijst (eigen naam).
+const isX = c => c !== "boodschappen" && !String(c).startsWith("s:");
+// De lijst Boodschappen is optioneel (Instellingen). Staat hij uit, dan komt alles zonder vaste winkel op de lijst van de standaardwinkel.
+const useBs = () => !!(S.state.cfg && S.state.cfg.useBs);
+const defStore = () => { const d = S.state.cfg && S.state.cfg.def; return d && storeList().some(s => s.id === d) ? d : "standaard"; };
+const homeList = () => useBs() ? "boodschappen" : "s:" + defStore();
+const curList = () => { const c = pref.get("list", "") || homeList(); if (c === "boodschappen") return useBs() ? c : homeList(); if (c.startsWith("s:")) return storeList().some(s => "s:" + s.id === c) ? c : homeList(); return S.xlists[c] ? c : homeList(); };
+const listOf = (k, v) => { const s = v.store || ""; return s && storeList().some(x => x.id === s) ? s : useBs() ? "" : defStore(); };
+const prodList = k => listOf(k, {store:(S.products[k] && S.products[k].store) || ""});
+const listEntries = c => { const sid = c === "boodschappen" ? "" : c.slice(2); return Object.entries(S.items).filter(([k, v]) => listOf(k, v) === sid).sort((a, b) => a[1].name.localeCompare(b[1].name)); };
+const listName = c => c === "boodschappen" ? "Boodschappen" : c.startsWith("s:") ? storeName(c.slice(2)) : (S.xlists[c] || {}).name || "";
 const xOf = l => Object.entries(S.xitems).filter(([, v]) => v.list === l).sort((a, b) => a[1].name.localeCompare(b[1].name));
 function xadd(rawName, a){
   const l = curList(), key = keyOf(rawName); if (!key || l === "boodschappen") return;
@@ -900,14 +928,14 @@ function renderX(l, shop, cur){
     h += "<h3 class='ch'>In het karretje<span class='n'>" + done.length + "</span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>";
   }
   $("list").innerHTML = h; flashKey = null;
-  return {title:shop ? "Winkelen bij " + name : name, sub:shop && all.length ? done.length + " van " + all.length + " gepakt" : "", act:shop ? "<button class='ibb pri' data-a='finish' aria-label='Klaar met winkelen'>" + ico("check") + "</button>" : listBtnHtml(cur) + (all.length ? eyeBtn() : "") + (all.some(([, v]) => !v.checked) ? "<button class='ibb pri' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
+  return {title:shop ? "Winkelen bij " + name : name, sub:shop && all.length ? done.length + " van " + all.length + " gepakt" : "", act:shop ? "<button class='ibb pri' data-a='finish' aria-label='Klaar met winkelen'>" + ico("check") + "</button>" : listBtnHtml(cur) + (all.length ? eyeBtn() : "") + (Object.values(S.items).some(v => !v.checked) || Object.values(S.xitems).some(v => !v.checked) ? "<button class='ibb pri' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
 }
 // Lijstkeuze: icoon rechtsboven, opent een klein menu met alle lijsten.
-const openCount = id => id === "boodschappen" ? Object.values(S.items).filter(v => !v.checked).length : xOf(id).filter(([, v]) => !v.checked).length;
-const allLists = () => [["boodschappen", "Boodschappen"]].concat(Object.entries(S.xlists).sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([id, l]) => [id, l.name]));
+const openCount = id => (isX(id) ? xOf(id) : listEntries(id)).filter(([, v]) => !v.checked).length;
+const allLists = () => (useBs() ? [["boodschappen", "Boodschappen"]] : []).concat(storeList().map(s => ["s:" + s.id, s.name]), Object.entries(S.xlists).sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([id, l]) => [id, l.name]));
 function popHtml(){
   const cur = curList();
-  return "<div class='pop' role='menu'>" + allLists().map(([id, n]) => { const c = openCount(id); return "<button class='popi" + (id === cur ? " on" : "") + "' data-a='setlist' data-k='" + esc(id) + "' role='menuitemradio' aria-checked='" + (id === cur) + "'><span class='pc'>" + (id === cur ? ico("check") : "") + "</span>" + (id === "boodschappen" ? "" : logoHtml(n, (S.xlists[id] || {}).logo, 22)) + "<span class='grow'>" + esc(n) + "</span>" + (c ? "<span class='pn'>" + c + "</span>" : "") + "</button>"; }).join("") +
+  return "<div class='pop' role='menu'>" + allLists().map(([id, n]) => { const c = openCount(id); return "<button class='popi" + (id === cur ? " on" : "") + "' data-a='setlist' data-k='" + esc(id) + "' role='menuitemradio' aria-checked='" + (id === cur) + "'><span class='pc'>" + (id === cur ? ico("check") : "") + "</span>" + (id.startsWith("s:") ? logoHtml(n, (storeList().find(s => "s:" + s.id === id) || {}).logo, 22) : "<span class='lg lgnone' style='width:22px;height:22px'>" + ico("list") + "</span>") + "<span class='grow'>" + esc(n) + "</span>" + (c ? "<span class='pn'>" + c + "</span>" : "") + "</button>"; }).join("") +
     "<div class='popsep'></div><button class='popi' data-a='newlist'><span class='pc'>" + ico("plus") + "</span><span class='grow'>Nieuwe lijst</span></button><button class='popi' data-a='nav' data-k='lijsten'><span class='pc'>" + ico("edit") + "</span><span class='grow'>Lijsten beheren</span></button></div>";
 }
 let popAnchor = null;
@@ -942,13 +970,13 @@ const tourOn = () => !!(S.state && S.state.tour && S.state.tour.active && (S.sta
 let startSel = [];
 function tourStops(stops){
   stops = stops || (S.state.tour && S.state.tour.stops) || [];
-  const sup = stops.filter(s => s[0] === "s").map(s => s.slice(2)), sl = storeList();
-  // Boodschappen: vaste winkel als die in de ronde zit, zonder voorkeur naar de eerste supermarkt, anders blijft het op de lijst staan.
-  const where = ([k, v]) => { const pr = v.store || (S.products[k] && S.products[k].store) || ""; return pr ? (sup.includes(pr) ? pr : null) : (sup[0] || null); };
+  const sl = storeList(), sids = stops.filter(s => s[0] === "s").map(s => s.slice(2)), firstSup = sids.find(id => { const st = sl.find(s => s.id === id); return st && !st.plain; });
+  // Winkellijsten komen bij hun winkel; Boodschappen (maakt niet uit) gaat mee naar de eerste supermarkt in de ronde.
+  const where = ([k, v]) => { const l = listOf(k, v); return l ? (sids.includes(l) ? l : null) : (firstSup || null); };
   return stops.map(key => {
     const id = key.slice(2);
     if (key[0] === "s") { const st = sl.find(s => s.id === id); return st ? {key, type:"s", id, name:st.name, logo:st.logo, st, entries:Object.entries(S.items).filter(e => where(e) === id)} : null; }
-    const l = S.xlists[id]; return l ? {key, type:"x", id, name:l.name, logo:l.logo, entries:xOf(id)} : null;
+    const l = S.xlists[id]; return l ? {key, type:"x", id, name:l.name, logo:"", entries:xOf(id)} : null;
   }).filter(Boolean);
 }
 function curStop(stops){
@@ -958,15 +986,16 @@ function curStop(stops){
 }
 function renderTour(){
   const stops = tourStops(), all = stops.flatMap(s => s.entries), done = all.filter(([, v]) => v.checked), cur = curStop(stops);
-  const sup = stops.filter(s => s.type === "s");
+  const sup = stops.filter(s => s.type === "s" && !s.st.plain);
   $("progWrap").hidden = !all.length;
   $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
   let h = "";
   stops.forEach((s, i) => {
     const open = s.entries.filter(([, v]) => !v.checked && !v.missing);
-    h += "<div class='shead tour" + (i ? "" : " first") + (cur && cur.key === s.key ? " now" : "") + "' id='stop-" + i + "'>" + logoHtml(s.name, s.logo, 26) + "<span>" + esc(s.name) + "</span><small>" + (open.length ? open.length + " te pakken" : "klaar") + "</small></div>";
+    h += "<div class='shead tour" + (i ? "" : " first") + (cur && cur.key === s.key ? " now" : "") + "' id='stop-" + i + "'>" + (s.type === "x" ? "<span class='lg lgnone' style='width:26px;height:26px'>" + ico("list") + "</span>" : logoHtml(s.name, s.logo, 26)) + "<span>" + esc(s.name) + "</span><small>" + (open.length ? open.length + " te pakken" : "klaar") + "</small></div>";
     if (!open.length) { h += "<p class='hint stopdone'>" + (s.entries.length ? "Alles van " + esc(s.name) + " is gepakt." : "Niets op de lijst voor " + esc(s.name) + ".") + "</p>"; return; }
     if (s.type === "x") { h += "<div class='group' style='margin-top:14px'>" + open.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>"; return; }
+    if (s.st.plain) { h += "<div class='group' style='margin-top:14px'>" + open.map(([k, v]) => rowHtml(k, v)).join("") + "</div>"; return; }
     const si = sup.indexOf(s), nx = sup[si + 1] ? sup[si + 1].st : null, prv = sup[si - 1] ? sup[si - 1].st : null;
     for (const c of order(s.st)) {
       const rows = open.filter(([, v]) => catOf(v.cat) === c);
@@ -986,8 +1015,8 @@ function renderTour(){
 // Startscherm: welke winkels en in welke volgorde.
 function startCands(){
   const ok = ([, v]) => !v.checked;
-  const sl = storeList().map(st => ({key:"s:" + st.id, name:st.name, logo:st.logo, n:Object.entries(S.items).filter(e => ok(e) && (e[1].store || (S.products[e[0]] && S.products[e[0]].store) || "") === st.id).length, kind:"Supermarkt"}));
-  const xl = Object.entries(S.xlists).map(([id, l]) => ({key:"x:" + id, name:l.name, logo:l.logo, n:xOf(id).filter(ok).length, kind:"Lijst"}));
+  const sl = storeList().map(st => ({key:"s:" + st.id, name:st.name, logo:st.logo, sup:!st.plain, n:listEntries("s:" + st.id).filter(ok).length}));
+  const xl = Object.entries(S.xlists).map(([id, l]) => ({key:"x:" + id, name:l.name, loose:true, n:xOf(id).filter(ok).length}));
   return sl.concat(xl).sort((a, b) => (b.n > 0) - (a.n > 0) || a.name.localeCompare(b.name));
 }
 function openStart(){
@@ -998,11 +1027,11 @@ function openStart(){
 }
 function drawStart(){
   const card = document.querySelector(".mcard.start"); if (!card) return;
-  const c = startCands(), loose = Object.entries(S.items).filter(([k, v]) => !v.checked && !(v.store || (S.products[k] && S.products[k].store))).length;
-  const firstSup = startSel.find(k => k[0] === "s");
+  const c = startCands(), loose = listEntries("boodschappen").filter(([, v]) => !v.checked).length;
+  const firstSup = startSel.find(k => (c.find(x => x.key === k) || {}).sup);
   card.innerHTML = "<h2>Waar ga je winkelen?</h2><p class='mlead'>Tik de winkels aan in de volgorde waarin je ze bezoekt.</p><div class='slist'>" +
-    c.map(x => { const i = startSel.indexOf(x.key); return "<button class='scand" + (i >= 0 ? " on" : "") + (x.n ? "" : " empty") + "' data-a='stsel' data-k='" + esc(x.key) + "'><span class='num" + (i >= 0 ? " on" : "") + "'>" + (i >= 0 ? i + 1 : "") + "</span>" + logoHtml(x.name, x.logo, 30) + "<span class='grow'><span class='ct'>" + esc(x.name) + "</span><span class='cs'>" + (x.n ? nProd(x.n) : "niets op de lijst") + (x.key === firstSup && loose ? " + " + loose + " zonder vaste winkel" : "") + "</span></span></button>"; }).join("") + "</div>" +
-    (loose && !firstSup ? "<p class='mlead' style='margin:10px 2px 0'>" + nProd(loose) + " zonder vaste winkel gaan mee naar de eerste supermarkt die je kiest.</p>" : "") +
+    c.map(x => { const i = startSel.indexOf(x.key); return "<button class='scand" + (i >= 0 ? " on" : "") + (x.n ? "" : " empty") + "' data-a='stsel' data-k='" + esc(x.key) + "'><span class='num" + (i >= 0 ? " on" : "") + "'>" + (i >= 0 ? i + 1 : "") + "</span>" + (x.loose ? "<span class='lg lgnone' style='width:30px;height:30px'>" + ico("list") + "</span>" : logoHtml(x.name, x.logo, 30)) + "<span class='grow'><span class='ct'>" + esc(x.name) + "</span><span class='cs'>" + (x.n ? nProd(x.n) : "niets op de lijst") + (x.key === firstSup && loose ? " + " + loose + " van Boodschappen" : "") + "</span></span></button>"; }).join("") + "</div>" +
+    (loose && !firstSup ? "<p class='mlead' style='margin:10px 2px 0'>" + nProd(loose) + " op Boodschappen " + (loose === 1 ? "gaat" : "gaan") + " mee naar de eerste supermarkt die je kiest.</p>" : "") +
     "<div class='line' style='margin-top:16px'><button class='btn sec grow' data-a='modalclose'>Annuleren</button><button class='btn grow' data-a='stgo'" + (startSel.length ? "" : " disabled") + ">Start winkelen</button></div>";
 }
 
@@ -1025,10 +1054,10 @@ function wrow(v, right, cls){
 }
 function renderWatch(cur){
   if (tourOn()) return renderWatchTour();
-  const xl = cur !== "boodschappen", all = xl ? xOf(cur) : Object.entries(S.items);
+  const xl = true, all = isX(cur) ? xOf(cur) : listEntries(cur);
   const done = all.filter(([, v]) => v.checked).sort((a, b) => (b[1].checkedAt || 0) - (a[1].checkedAt || 0));
   const miss = all.filter(([, v]) => !v.checked && v.missing), open = all.filter(([, v]) => !v.checked && !v.missing);
-  const name = xl ? S.xlists[cur].name : "Boodschappen";
+  const name = listName(cur);
   $("progWrap").hidden = !all.length;
   $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
   // nieuw in het karretje sinds de vorige keer tekenen: groot laten zien
@@ -1113,53 +1142,41 @@ function runFlash(){
   setTimeout(() => { if (host.firstChild === f) host.innerHTML = ""; flashBusy = false; runFlash(); }, flashQ.length ? 1600 : 2250);
 }
 function renderList(){
-  const shop = document.body.classList.contains("shop"), cur = curList();
-  $("q").placeholder = cur === "boodschappen" ? "Voeg toe, bv. 2 paprika" : "Voeg toe aan " + S.xlists[cur].name;
+  let shop = document.body.classList.contains("shop");
+  const cur = curList(), nm = listName(cur);
+  $("q").placeholder = cur === "boodschappen" ? "Voeg toe, bv. 2 paprika" : "Voeg toe aan " + nm;
   $("demo").style.display = cur === "boodschappen" ? "" : "none";
   if (document.body.classList.contains("watch")) return renderWatch(cur);
-  if (shop && tourOn()) return renderTour();
-  if (cur !== "boodschappen") return renderX(cur, shop, cur);
-  const all = Object.entries(S.items).sort((a, b) => a[1].name.localeCompare(b[1].name)), done = all.filter(([, v]) => v.checked);
-  // Lijstmodus is plannen, winkelmodus is doen: afvinken en Niet gevonden bestaan alleen tijdens het winkelen.
-  const open = all.filter(([, v]) => !v.checked && !(shop && v.missing)), miss = shop ? all.filter(([, v]) => !v.checked && v.missing) : [];
-  const ts = tripStores(), ids = ts.map(s => s.id), multi = ts.length > 1;
-  $("progWrap").hidden = !all.length || !shop;
-  $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
+  if (shop) { if (tourOn()) return renderTour(); setShop(false, true); shop = false; }
+  if (isX(cur)) return renderX(cur, false, cur);
+  const st = cur === "boodschappen" ? null : storeList().find(s => "s:" + s.id === cur);
+  const all = listEntries(cur), done = all.filter(([, v]) => v.checked), open = all.filter(([, v]) => !v.checked);
+  $("progWrap").hidden = true;
   let h = "";
-  if (!shop && done.length) h += cartNote(done.length);
-  const due = shop ? [] : dueList();
+  if (done.length) h += cartNote(done.length);
+  const due = dueList().filter(p => prodList(p.k) === (cur === "boodschappen" ? "" : cur.slice(2)));
   if (due.length) h += "<h3 class='ch'>Tijd voor<span class='n'>volgens jullie koopritme</span></h3><div class='chips'>" + due.map(p => "<span class='chip duo'><button data-a='dueadd' data-k='" + esc(p.k) + "'>" + esc(p.name) + "<small>om de " + p.r.days + " dagen</small></button><button data-a='snooze' data-k='" + esc(p.k) + "' aria-label='Nu niet'>" + ico("x") + "</button></span>").join("") + "</div>";
-  if (!all.length) h += empty("list", "De lijst is leeg", "Typ hierboven wat je nodig hebt, of begin met een template of een vorige lijst.") + "<div class='line center'><button class='btn sec' data-a='nav' data-k='templates'>Templates</button><button class='btn sec' data-a='nav' data-k='vorige-lijsten'>Vorige lijsten</button></div>";
-  else if (!open.length && !miss.length) h += empty("check", "Alles in het karretje", "Rond af om het bezoek te bewaren bij Vorige lijsten.") + "<div class='line center'><button class='btn' data-a='finish'>Afronden</button></div>";
-  let firstHead = true;
-  ts.forEach((st, si) => {
-    const mine = open.filter(([k, v]) => storeOf(k, v, ids) === st.id); if (!mine.length) return;
-    const isFirst = firstHead; firstHead = false;
-    if (multi) h += "<div class='shead" + (isFirst ? " first" : "") + "'>" + logoHtml(st.name, st.logo, 26) + "<span>" + esc(st.name) + "</span><small>" + mine.length + " te pakken</small></div>";
-    const nx = shop ? ts[si + 1] || null : null, prv = shop ? ts[si - 1] || null : null;
-    for (const c of order(st)) {
-      const rows = mine.filter(([, v]) => catOf(v.cat) === c);
-      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx, null, false, prv)).join("") + "</div>";
+  if (!all.length) h += cur === "boodschappen"
+    ? empty("list", "Boodschappen is leeg", "Hier komt alles waarvoor het niet uitmaakt waar je het koopt. Bij het winkelen gaat het mee naar de eerste supermarkt.") + "<div class='line center'><button class='btn sec' data-a='nav' data-k='templates'>Templates</button><button class='btn sec' data-a='nav' data-k='vorige-lijsten'>Vorige lijsten</button></div>"
+    : empty("list", nm + " is leeg", "Typ hierboven wat je bij " + nm + " nodig hebt.");
+  else if (!open.length) h += empty("check", "Alles in het karretje", "Rond af om de afgevinkte producten op te ruimen.") + "<div class='line center'><button class='btn' data-a='finish'>Afronden</button></div>";
+  if (open.length) {
+    if (st && st.plain) h += "<div class='group' style='margin-top:16px'>" + open.map(([k, v]) => rowHtml(k, v)).join("") + "</div>";
+    else for (const c of (st ? order(st) : DEFAULT_ORDER)) {
+      const rows = open.filter(([, v]) => catOf(v.cat) === c);
+      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v)).join("") + "</div>";
     }
-  });
-  if (miss.length) h += "<h3 class='ch'>Niet gevonden<span class='n'>" + miss.length + "</span></h3><div class='group'>" + miss.map(([k, v]) => missHtml(k, v, ts[ids.indexOf(storeOf(k, v, ids)) + 1] || null)).join("") + "</div>";
-  if (shop && done.length) {
-    done.sort((a, b) => (b[1].checkedAt || 0) - (a[1].checkedAt || 0));
-    h += "<h3 class='ch'>In het karretje<span class='n'>" + done.length + "</span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v)).join("") + "</div>";
   }
   $("list").innerHTML = h; flashKey = null;
-  return {
-    title: shop ? "Winkelen" : "Boodschappen",
-    // Voortgang en winkelroute alleen tijdens het winkelen.
-    sub: shop ? (all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst") + (ids.some(i => i !== "standaard") ? " · " + esc(ts.map(s => s.name).join(" → ")) : "") : "",
-    act: shop ? "<button class='ibb pri' data-a='finish' aria-label='Klaar met winkelen'>" + ico("check") + "</button>" : listBtnHtml(cur) + (all.length ? eyeBtn() : "") + (all.some(([, v]) => !v.checked) ? "<button class='ibb pri' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")
-  };
+  const anyOpen = Object.values(S.items).some(v => !v.checked) || Object.values(S.xitems).some(v => !v.checked);
+  return {title:nm, titleHtml:st ? "<span class='ttl'>" + logoHtml(st.name, st.logo, 26) + esc(st.name) + "</span>" : "",
+    sub:"", act:listBtnHtml(cur) + (all.length ? eyeBtn() : "") + (anyOpen ? "<button class='ibb pri' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
 }
 
 /* ---------- pagina's ---------- */
 PAGES["bijna-op"] = () => {
   const edit = !!args.stEdit, st = allProducts().filter(p => p.staple).sort(byName);
-  let h = st.length ? "<p class='lead'>" + (edit ? "Tik op een product om het uit dit overzicht te halen." : "Tik aan wat thuis bijna op is. Het staat dan direct op de boodschappenlijst.") + "</p>" : empty("home", "Nog geen vaste producten", "Voeg hieronder toe wat jullie altijd in huis willen hebben.");
+  let h = st.length ? "<p class='lead'>" + (edit ? "Tik op een product om het uit dit overzicht te halen." : "Tik aan wat thuis bijna op is. Het staat dan direct op de lijst van zijn winkel.") + "</p>" : empty("home", "Nog geen vaste producten", "Voeg hieronder toe wat jullie altijd in huis willen hebben.");
   for (const c of DEFAULT_ORDER) { const r = st.filter(p => catOf(p.cat) === c); if (r.length) h += catHead(c) + "<div class='chips'>" + r.map(p => "<button class='chip" + (!edit && onList(p.k) ? " on" : "") + "' data-a='staple' data-k='" + esc(p.k) + "'>" + esc(p.name) + (edit ? ico("x") : "") + "</button>").join("") + "</div>"; }
   const sug = allProducts().filter(p => !p.staple && p.n >= 2).sort((a, b) => b.n - a.n).slice(0, 8);
   h += "<h3 class='ch'>Vast product toevoegen</h3><div class='line'><input class='field' id='stName' placeholder='bv. Olijfolie' enterkeyhint='done' data-enter='stnew'><button class='btn' data-a='stnew'>Toevoegen</button></div>" +
@@ -1208,25 +1225,21 @@ PAGES["vorige-lijsten"] = () => {
 PAGES.meer = () => {
   const n = Object.keys(S.history).length;
   return {title:"Meer", html:
-    "<div class='group'>" + navCell("lijsten", undefined, "Lijsten", esc(["Boodschappen"].concat(Object.values(S.xlists).map(l => l.name).sort()).join(", ")), "list") + navCell("winkels", undefined, "Winkels en looproute", esc(tripStores().map(s => s.name).join(" → ")), "pin") + navCell("vorige-lijsten", undefined, "Vorige lijsten", n ? n + " bewaard" : "Nog niets bewaard", "clock") +
+    "<div class='group'>" + navCell("lijsten", undefined, "Lijsten en winkels", esc(storeList().map(s => s.name).concat(Object.values(S.xlists).map(l => l.name)).join(", ")), "list") + navCell("vorige-lijsten", undefined, "Vorige lijsten", n ? n + " bewaard" : "Nog niets bewaard", "clock") +
     "<button class='cell' data-a='share'>" + ico("share") + "<span class='grow'><span class='ct'>Lijst delen als tekst</span></span></button></div>" +
     "<div class='group'>" + navCell("instellingen", undefined, "Instellingen", "Weergave en account", "sliders") + "</div>"};
 };
-PAGES.winkels = () => {
-  const ts = tripStores();
-  return {title:"Winkels", html:
-    "<p class='lead'>Tik de rondjes aan in de volgorde waarin je de winkels vandaag bezoekt. Tik op een winkel om de naam, de looproute of de winkel zelf te beheren.</p><div class='group'>" +
-    storeList().map(s => { const i = ts.findIndex(t => t.id === s.id), a = " data-k='" + esc(s.id) + "'"; return "<div class='cell' style='padding-left:4px'><button class='numhit' data-a='trip'" + a + " aria-label='" + (i >= 0 ? "Uit" : "In") + " route van vandaag'><span class='num" + (i >= 0 ? " on" : "") + "'>" + (i >= 0 ? i + 1 : "") + "</span></button><button class='grow navrow' data-a='nav' data-k='looproute' data-arg='" + esc(s.id) + "'>" + logoHtml(s.name, s.logo, 26) + "<span class='grow'>" + esc(s.name) + "</span>" + ico("chevR") + "</button></div>"; }).join("") + "</div>" +
-    "<h3 class='ch'>Winkel toevoegen</h3><div class='line'><input class='field' id='sName' placeholder='bv. Lidl' enterkeyhint='done' data-enter='sadd'><button class='btn' data-a='sadd'>Toevoegen</button></div>" +
-    "<p class='hint'>Producten zonder vaste winkel staan bij de eerste winkel van je route. Een vaste winkel kies je bij het product zelf.</p>"};
-};
+PAGES.winkels = () => PAGES.lijsten();
 PAGES.looproute = () => {
   const st = storeList().find(s => s.id === args.looproute); if (!st) return gone();
   const ord = order(st), mv = args.moved; args.moved = null;
+  const n = listEntries("s:" + st.id).filter(([, v]) => !v.checked).length;
   return {title:st.name, html:
-    "<div class='group'><label class='cell'><span class='lbl'>Naam</span><input class='inl grow' id='stoName' data-k='" + esc(st.id) + "' value='" + esc(st.name) + "' enterkeyhint='done'></label>" + logoCell("stores", st.id, st.name, st.logo) + "</div>" +
-    "<h3 class='ch'>Looproute</h3><p class='lead' style='margin-top:0'>Sleep de schappen aan het greepje rechts in de volgorde waarin je door de winkel loopt.</p><div class='group' id='sortList'>" +
-    ord.map(c => "<div class='cell" + (mv === c ? " flash" : "") + "'><span class='em'>" + CAT[c].ico + "</span><span class='grow'>" + esc(CAT[c].name) + "</span><span class='grip' aria-hidden='true'>" + ico("grip") + "</span></div>").join("") + "</div>" +
+    "<div class='group'><button class='cell' data-a='openlist' data-k='s:" + esc(st.id) + "'>" + logoHtml(st.name, st.logo, 26) + "<span class='grow'><span class='ct'>Lijst openen</span><span class='cs'>" + (n ? nProd(n) + " op de lijst" : "Nog leeg") + "</span></span>" + ico("chevR") + "</button></div>" +
+    "<div class='group'><label class='cell'><span class='lbl'>Naam</span><input class='inl grow' id='stoName' data-k='" + esc(st.id) + "' value='" + esc(st.name) + "' enterkeyhint='done'></label>" + logoCell("stores", st.id, st.name, st.logo) +
+    "<div class='cell'><span class='grow'><span class='ct'>Schappen en looproute</span><span class='cs'>Uit: een eenvoudig lijstje</span></span><button class='sw" + (st.plain ? "" : " on") + "' data-a='setplain' data-k='" + esc(st.id) + "' role='switch' aria-checked='" + !st.plain + "' aria-label='Schappen en looproute'><i></i></button></div></div>" +
+    (st.plain ? "" : "<h3 class='ch'>Looproute</h3><p class='lead' style='margin-top:0'>Sleep de schappen aan het greepje rechts in de volgorde waarin je door de winkel loopt.</p><div class='group' id='sortList'>" +
+    ord.map(c => "<div class='cell" + (mv === c ? " flash" : "") + "'><span class='em'>" + CAT[c].ico + "</span><span class='grow'>" + esc(CAT[c].name) + "</span><span class='grip' aria-hidden='true'>" + ico("grip") + "</span></div>").join("") + "</div>") +
     (st.id !== "standaard" ? "<button class='btn text danger wide' data-a='sdel'>Winkel verwijderen</button>" : "<p class='hint'>De standaardwinkel kun je hernoemen, maar niet verwijderen.</p>")};
 };
 PAGES.schappen = () => {
@@ -1259,7 +1272,9 @@ PAGES.instellingen = () => {
     "<h3 class='ch'>Compactheid</h3><div class='range'><input type='range' id='densIn' min='0' max='3' step='1' value='" + DENS.indexOf(pref.get("dens", "a")) + "' aria-label='Compactheid van de lijst'><div class='ticks'>" + DENS_LABEL.map((l, i) => "<span style='left:" + (i * 100 / 3) + "%' class='" + (DENS[i] === pref.get("dens", "a") ? "on" : "") + "'>" + l + "</span>").join("") + "</div></div>" +
     "<div class='group preview' aria-hidden='true'>" + [["Bananen", 1, ""], ["Gehakt", 500, "g"], ["Melk", 2, ""]].map(([n, q, un], i) => rowHtml("vb" + i, {name:n, qty:q, unit:un})).join("") + "</div>" +
     "<p class='hint' style='margin:-4px 2px 0'>Geldt voor de lijsten op dit apparaat, ook in de winkelmodus. Die blijft per stand iets ruimer, zodat je onderweg makkelijk afvinkt.</p>" +
-    "<h3 class='ch'>Boodschappen</h3><div class='group'>" + navCell("schappen", undefined, "Schappen", CATS.length + " schappen", "tag") + "</div>" +
+    "<h3 class='ch'>Lijsten</h3><div class='group'>" + navCell("schappen", undefined, "Schappen", CATS.length + " schappen", "tag") +
+    "<div class='cell'><span class='grow'><span class='ct'>Lijst Boodschappen</span><span class='cs'>Voor als de winkel niet uitmaakt</span></span><button class='sw" + (useBs() ? " on" : "") + "' data-a='usebs' role='switch' aria-checked='" + useBs() + "' aria-label='Lijst Boodschappen gebruiken'><i></i></button></div>" +
+    (useBs() ? "" : "<label class='cell'><span class='grow'><span class='ct'>Zonder vaste winkel naar</span><span class='cs'>Bv. via Bijna op of een template</span></span><select id='defSel'>" + storeList().map(s => "<option value='" + esc(s.id) + "'" + (s.id === defStore() ? " selected" : "") + ">" + esc(s.name) + "</option>").join("") + "</select>" + ico("down") + "</label>") + "</div>" +
     "<h3 class='ch'>Account</h3><div class='group'>" + (user
       ? "<div class='cell'><span class='grow'>Naam</span><span class='qty'>" + esc(user.displayName || "") + "</span></div><div class='cell'><span class='grow'>E-mail</span><span class='qty'>" + esc(user.email || "") + "</span></div>"
       : "<div class='cell'><span class='grow'><span class='ct'>Demomodus</span><span class='cs'>Niet gekoppeld, alles staat alleen in deze browser</span></span></div>") + "</div>" +
@@ -1278,15 +1293,18 @@ PAGES.ding = () => {
     "<div class='group'><button class='cell danger' data-a='xdel'" + ka + ">Van lijst halen</button></div>"};
 };
 PAGES.lijsten = () => {
-  const ls = Object.entries(S.xlists).sort((a, b) => a[1].name.localeCompare(b[1].name));
-  return {title:"Lijsten", html:
-    "<p class='lead'>Extra lijsten voor andere winkels, zoals Action, Ikea of Kruidvat. Zonder schappen, winkelvolgorde of looproute: gewoon een lijstje per winkel.</p>" +
-    (ls.length ? "<div class='group'>" + ls.map(([id, l]) => { const n = xOf(id).filter(([, v]) => !v.checked).length; return "<div class='cell'><button class='lgbtn' data-a='logo' data-c='xlists' data-k='" + esc(id) + "' aria-label='Logo kiezen'>" + logoHtml(l.name, l.logo, 30) + "</button><input class='inl left grow' data-ln='" + esc(id) + "' value='" + esc(l.name) + "' enterkeyhint='done' aria-label='Naam van de lijst'><span class='qty'>" + (n ? n + " open" : "leeg") + "</span><button class='ib sm' data-a='ldel' data-k='" + esc(id) + "' aria-label='Lijst verwijderen'>" + ico("x") + "</button></div>"; }).join("") + "</div><p class='hint' style='margin:-4px 2px 0'>Tik op een naam om hem te wijzigen, of op het rondje om een logo te kiezen.</p>" : "") +
-    "<h3 class='ch'>Lijst toevoegen</h3><div class='line'><input class='field' id='lName' placeholder='bv. Action' enterkeyhint='done' autocapitalize='sentences' data-enter='ladd'><button class='btn' data-a='ladd'>Toevoegen</button></div>"};
+  const ls = Object.entries(S.xlists).sort((a, b) => a[1].name.localeCompare(b[1].name)), sl = storeList();
+  return {title:"Lijsten en winkels", html:
+    "<p class='lead'>Elke winkel heeft een eigen lijst met het logo van de winkel. Losse lijsten zijn voor de rest, met een eigen naam.</p>" +
+    "<h3 class='ch'>Winkels</h3><div class='group'>" + sl.map(s => { const n = listEntries("s:" + s.id).filter(([, v]) => !v.checked).length; return "<button class='cell' data-a='nav' data-k='looproute' data-arg='" + esc(s.id) + "'>" + logoHtml(s.name, s.logo, 30) + "<span class='grow'><span class='ct'>" + esc(s.name) + "</span><span class='cs'>" + (n ? nProd(n) : "leeg") + (s.plain ? " · zonder schappen" : "") + "</span></span>" + ico("chevR") + "</button>"; }).join("") + "</div>" +
+    "<div class='line'><input class='field' id='sName' placeholder='Nieuwe winkel, bv. Lidl' enterkeyhint='done' autocapitalize='sentences' data-enter='sadd'><button class='btn fixw' data-a='sadd'>Toevoegen</button></div>" +
+    "<hr class='sep'><h3 class='ch'>Losse lijsten</h3>" +
+    (ls.length ? "<div class='group'>" + ls.map(([id, l]) => { const n = xOf(id).filter(([, v]) => !v.checked).length; return "<div class='cell'><span class='lg lgnone' style='width:30px;height:30px'>" + ico("list") + "</span><input class='inl left grow' data-ln='" + esc(id) + "' value='" + esc(l.name) + "' enterkeyhint='done' aria-label='Naam van de lijst'><span class='qty'>" + (n ? n + " open" : "leeg") + "</span><button class='ib sm' data-a='xconvert' data-k='" + esc(id) + "' aria-label='Omzetten naar winkel'>" + ico("pin") + "</button><button class='ib sm' data-a='ldel' data-k='" + esc(id) + "' aria-label='Lijst verwijderen'>" + ico("x") + "</button></div>"; }).join("") + "</div><p class='hint' style='margin:-4px 2px 12px'>Tik op een naam om hem te wijzigen. Met het speldje maak je van een losse lijst een winkel met eigen logo.</p>" : "") +
+    "<div class='line'><input class='field' id='lName' placeholder='Nieuwe losse lijst, bv. Cadeaus' enterkeyhint='done' autocapitalize='sentences' data-enter='ladd'><button class='btn fixw' data-a='ladd'>Toevoegen</button></div>"};
 };
 PAGES.product = () => {
   const k = args.product, it = S.items[k]; if (!it) return gone();
-  const p = product(k), ka = " data-k='" + esc(k) + "'", shops = storeList().filter(s => s.id !== "standaard"), cs = it.store || (p && p.store) || "", staple = !!(p && p.staple);
+  const p = product(k), ka = " data-k='" + esc(k) + "'", shops = storeList(), cs = listOf(k, it), staple = !!(p && p.staple);
   return {title:it.name, html:
     "<div class='hero'><div class='bigstep'><button data-a='minus'" + ka + " aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(it) + "</b><button data-a='plus'" + ka + " aria-label='Meer'>" + ico("plus") + "</button></div>" +
     (it.unit === "g" || it.unit === "ml" ? "<div class='chips center'>" + [50, 250, 500].map(n => "<button class='chip' data-a='addq'" + ka + " data-d='" + n + "'>+" + n + "</button>").join("") + "</div>" : "") + "</div>" +
@@ -1294,7 +1312,7 @@ PAGES.product = () => {
     "<div class='group'><label class='cell'><span class='grow'>Precies aantal</span><input class='inl' id='amtIn'" + ka + " inputmode='decimal' value='" + fmt(it.qty || 1) + "'></label>" +
     "<label class='cell'><span class='lbl'>Notitie</span><input class='inl grow' id='noteIn'" + ka + " value='" + esc(it.note) + "' placeholder='bv. merk of rijpheid' enterkeyhint='done'></label></div>" +
     "<div class='group'><label class='cell'><span class='grow'>Schap</span><select id='catSel'" + ka + ">" + CATS.map(c => "<option value='" + c[0] + "'" + (catOf(it.cat) === c[0] ? " selected" : "") + ">" + c[1] + " " + esc(c[2]) + "</option>").join("") + "</select>" + ico("down") + "</label>" +
-    (shops.length ? "<label class='cell'><span class='grow'>Kopen bij</span><select id='storeSel'" + ka + "><option value=''>Maakt niet uit</option>" + shops.map(s => "<option value='" + esc(s.id) + "'" + (cs === s.id ? " selected" : "") + ">" + esc(s.name) + "</option>").join("") + "</select>" + ico("down") + "</label>" : "") +
+    (shops.length ? "<label class='cell'><span class='grow'>Op lijst</span><select id='storeSel'" + ka + ">" + (useBs() ? "<option value=''>Boodschappen (maakt niet uit)</option>" : "") + shops.map(s => "<option value='" + esc(s.id) + "'" + (cs === s.id ? " selected" : "") + ">" + esc(s.name) + "</option>").join("") + "</select>" + ico("down") + "</label>" : "") +
     "<div class='cell'><span class='grow'><span class='ct'>Bijna op</span><span class='cs'>Vast product dat je thuis snel aantikt</span></span><button class='sw" + (staple ? " on" : "") + "' data-a='stoggle'" + ka + " role='switch' aria-checked='" + staple + "' aria-label='Bijna op'><i></i></button></div></div>" +
     "<p class='hint' style='margin:-4px 2px 18px'>Schap, winkel en eenheid worden onthouden voor de volgende keer." + (it.by ? " Toegevoegd door " + esc(it.by) + "." : "") + "</p>" +
     "<div class='group'><button class='cell danger' data-a='del'" + ka + ">Van lijst halen</button>" + (p && p.custom ? "<button class='cell danger' data-a='forget'" + ka + ">Product vergeten</button>" : "") + "</div>"};
@@ -1408,6 +1426,7 @@ const ACT = {
   logo:(k, t) => { logoTarget = {col:t.dataset.c, id:k}; const f = $("logoFile"); f.value = ""; f.click(); },
   logodel:(k, t) => { const col = t.dataset.c, old = (col === "stores" ? storeList().find(s => s.id === k) : S.xlists[k]) || {}; logoSave(col, k, ""); toast("Logo verwijderd", "Ongedaan maken", () => logoSave(col, k, old.logo || "")); },
   lists:() => popOpen() ? closePop() : openPop(),
+  usebs:(k, t) => { const on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => { DB.set("state", "cfg", {useBs:on}); render(true); }, 200); },
   watch:() => { setWatch(!document.body.classList.contains("watch")); window.scrollTo(0, 0); },
   storepick:(k, t) => {
     if (popOpen() && popAnchor === t) return closePop();
@@ -1479,14 +1498,12 @@ const ACT = {
     closeModal(); watchSeen = null; setShop(true); window.scrollTo(0, 0); toast("Tik om af te vinken, veeg opzij voor meer opties");
   },
   share:() => {
-    const lines = [], ts = tripStores(), ids = ts.map(s => s.id), xl = curList();
-    if (xl !== "boodschappen") { const r = xOf(xl).filter(([, v]) => !v.checked).map(e => e[1]); if (r.length) lines.push(S.xlists[xl].name + ":", ...r.map(v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : ""))); }
-    else for (const st of ts) {
-      const mine = Object.entries(S.items).filter(([k, v]) => !v.checked && storeOf(k, v, ids) === st.id).map(e => e[1]); if (!mine.length) continue;
-      if (ts.length > 1) lines.push("== " + st.name + " ==");
-      for (const c of order(st)) { const r = mine.filter(v => catOf(v.cat) === c).sort(byName); if (r.length) lines.push(CAT[c].name + ":", ...r.map(v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : "")), ""); }
-    }
-    if (!lines.length) return toast("Er staat niets open op de lijst");
+    const c = curList(), st = c.startsWith("s:") ? storeList().find(s => "s:" + s.id === c) : null;
+    const rows = (isX(c) ? xOf(c) : listEntries(c)).filter(([, v]) => !v.checked).map(e => e[1]), line = v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : "");
+    if (!rows.length) return toast("Er staat niets open op deze lijst");
+    const lines = [listName(c) + ":"];
+    if (isX(c) || (st && st.plain)) lines.push(...rows.sort(byName).map(line));
+    else for (const cat of (st ? order(st) : DEFAULT_ORDER)) { const r = rows.filter(v => catOf(v.cat) === cat).sort(byName); if (r.length) lines.push("", CAT[cat].name + ":", ...r.map(line)); }
     const txt = lines.join("\n").trim();
     try { (navigator.share ? navigator.share({text:txt}) : navigator.clipboard.writeText(txt).then(() => toast("Lijst gekopieerd"))).catch(() => {}); } catch { toast("Delen lukt hier niet"); }
   },
@@ -1533,7 +1550,17 @@ const ACT = {
     go("template", id); setTimeout(() => { const a = $("tplAdd"); if (a) a.focus(); }, 320);
   },
   trip:k => { let ids = tripIds(); if (ids.includes(k)) { if (ids.length > 1) ids = ids.filter(i => i !== k); } else ids.push(k); setTrip(ids); },
-  sadd:() => { const inp = $("sName"), name = inp.value.trim(); if (!name) return inp.focus(); const id = keyOf(name); inp.value = ""; inp.blur(); DB.set("stores", id, {name, order:order()}); setTrip(tripIds().filter(i => i !== id).concat(id)); },
+  sadd:() => { const inp = $("sName"), name = inp.value.trim(); if (!name) return inp.focus(); const id = keyOf(name); inp.value = ""; inp.blur(); if (!storeList().some(s => s.id === id)) DB.set("stores", id, {name, order:DEFAULT_ORDER.slice()}); render(true); toast("Winkel " + name + " met eigen lijst toegevoegd", "Openen", () => ACT.openlist("s:" + id)); },
+  setplain:(k, t) => { const st = storeList().find(s => s.id === k); if (!st) return; const on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => { DB.set("stores", k, {name:st.name, order:order(st), plain:!on}); render(true); }, 200); },
+  openlist:k => { pref.set("list", k); $("q").value = ""; go("lijst"); render(true); },
+  xconvert:k => {
+    const l = S.xlists[k]; if (!l) return;
+    let id = keyOf(l.name); const ex = storeList().find(s => s.id === id);
+    if (!ex) DB.set("stores", id, {name:l.name, order:DEFAULT_ORDER.slice(), plain:true});
+    xOf(k).forEach(([xk, v]) => { const pk = keyOf(v.name); if (!S.items[pk]) DB.set("items", pk, {name:v.name, cat:(S.products[pk] && S.products[pk].cat) || guessCat(v.name), qty:v.qty || 1, unit:v.unit || "", note:v.note || "", store:id, checked:!!v.checked, by:v.by || me(), at:v.at || Date.now()}); DB.del("xitems", xk); });
+    DB.del("xlists", k); if (pref.get("list", "") === k) pref.set("list", "s:" + id);
+    render(true); toast(l.name + " is nu een winkel met eigen lijst");
+  },
   sdel:() => {
     const id = args.looproute, old = S.stores[id], oldTrip = trip.slice(); if (!old) return;
     back(); DB.del("stores", id); setTrip(trip.filter(i => i !== id));
@@ -1570,6 +1597,7 @@ document.addEventListener("change", e => {
   if (t.dataset.ln) { const n = t.value.trim(); if (n && S.xlists[t.dataset.ln]) DB.set("xlists", t.dataset.ln, {name:n}); else render(true); }
   else if (t.id === "noteIn") DB.set(col, k, {note:t.value.trim()});
   else if (t.id === "catNameIn" || t.id === "catIcoIn") { const v = t.value.trim(), f = t.id === "catNameIn" ? "name" : "ico"; if (v) DB.set("cats", k, {[f]:v}); render(true); }
+  else if (t.id === "defSel") { DB.set("state", "cfg", {def:t.value}); t.blur(); render(true); }
   else if (t.id === "stoName") { const n = t.value.trim(), st = storeList().find(s => s.id === k); if (n && st) DB.set("stores", k, {name:n, order:order(st)}); else render(true); }
   else if (t.id === "tplName") { const n = t.value.trim(); if (n && S.templates[k]) DB.set("templates", k, {name:n}); else render(true); }
   else if (t.id === "amtIn") { const n = parseFloat(t.value.replace(",", ".")); t.blur(); if (n > 0) DB.set(col, k, {qty:Math.round(n * 100) / 100}); else render(true); }
@@ -1621,7 +1649,7 @@ function roundStats(){
     const all = tourStops().flatMap(s => s.entries.map(e => [e[0], e[1], s.type]));
     return {l:"tour", all, done:all.filter(([, v]) => v.checked), miss:all.filter(([, v]) => !v.checked && v.missing), rest:all.filter(([, v]) => !v.checked && !v.missing)};
   }
-  const l = curList(), all = l === "boodschappen" ? Object.entries(S.items) : xOf(l);
+  const l0 = curList(), l = isX(l0) ? l0 : "boodschappen", all = isX(l0) ? xOf(l0) : Object.entries(S.items);
   return {l, all, done:all.filter(([, v]) => v.checked), miss:all.filter(([, v]) => !v.checked && v.missing), rest:all.filter(([, v]) => !v.checked && !v.missing)};
 }
 function finish(){
