@@ -1488,7 +1488,7 @@ const ACT = {
   swmiss:(k, t) => { const col = t.dataset.x ? "xitems" : "items"; swDo(t, k => { const it = S[col][k]; if (!it) return; DB.set(col, k, {missing:true}); toast(it.name + " niet gevonden", "Ongedaan maken", () => DB.set(col, k, {missing:false})); }); },
   swnext:(k, t) => { const s = t.dataset.s, n = t.dataset.n; swDo(t, k => { const it = S.items[k]; if (!it) return; const was = it.store || ""; DB.set("items", k, {store:s}); toast(it.name + " bij " + n + " halen", "Ongedaan maken", () => DB.set("items", k, {store:was})); }); },
   finish:finish, finishok:() => { closeModal(); finishNow(); }, modalclose:closeModal,
-  tourstop:() => { closeModal(); DB.set("state", "tour", {active:false}); setShop(false); },
+  tourstop:() => { closeModal(); const t = {...S.state.tour}; DB.set("state", "tour", {active:false}); setShop(false); window.scrollTo(0, 0); toast("Winkelronde gestopt", "Ongedaan maken", () => { DB.set("state", "tour", {...t, active:true, at:Date.now()}); setShop(true); }); },
   next:(k, t) => { const it = S.items[k], s = t.dataset.s, was = storeOf(k, it, tripStores().map(x => x.id)); flashKey = k; DB.set("items", k, {store:s}); toast(it.name + " verplaatst naar " + t.dataset.n, "Ongedaan maken", () => { flashKey = k; DB.set("items", k, {store:was}); }); },
   stoggle:(k, t) => { const it = S.items[k], on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => DB.set("products", k, {name:it.name, cat:it.cat, staple:on}), 200); },
   clear:clearDone,
@@ -1673,7 +1673,12 @@ function roundStats(){
 }
 function finish(){
   const r = roundStats();
-  if (!r.done.length && !r.miss.length) { setShop(false); window.scrollTo(0, 0); return; }
+  // Ook zonder afgevinkte producten een duidelijke afsluiting, anders blijft de ronde stilletjes openstaan.
+  if (!r.done.length && !r.miss.length) {
+    $("modalHost").innerHTML = "<div class='modal' data-a='modalbg'><div class='mcard' role='dialog' aria-label='Klaar met winkelen'><h2>Klaar met winkelen</h2><p class='mlead' style='margin:0 2px'>Je hebt nog niets afgevinkt. Stop je de ronde, dan blijft alles gewoon op de lijst staan.</p>" +
+      "<div class='line' style='margin-top:18px'><button class='btn sec grow' data-a='modalclose'>Verder winkelen</button><button class='btn grow' data-a='tourstop'>Ronde stoppen</button></div></div></div>";
+    return;
+  }
   const line = (n, t, s) => "<div class='stat'><b>" + n + "</b><span class='grow'>" + t + "</span>" + (s ? "<small>" + s + "</small>" : "") + "</div>";
   $("modalHost").innerHTML = "<div class='modal' data-a='modalbg'><div class='mcard' role='dialog' aria-label='Klaar met winkelen'><h2>Klaar met winkelen</h2>" +
     line(r.done.length, r.done.length === 1 ? "product gepakt" : "producten gepakt", r.l === "boodschappen" ? "naar Vorige lijsten" : r.l === "tour" ? "worden opgeruimd" : "van de lijst") +
