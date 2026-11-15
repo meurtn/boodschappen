@@ -291,6 +291,20 @@ body:has(.sorting){user-select:none;-webkit-user-select:none}
 .range .ticks span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
 .range .ticks span.on{color:var(--acc);font-weight:500}
 .preview{pointer-events:none}
+.shead.tour{position:sticky;top:var(--toph,64px);z-index:3;background:var(--bg);margin:18px -16px -6px;padding:12px 18px 10px;border-top:1px solid var(--line)}
+.shead.tour.first{border-top:0;margin-top:4px}
+.shead.tour.now small{color:var(--acc);font-weight:500}
+.stopdone{margin:12px 2px 4px}
+.ttl{display:inline-flex;align-items:center;gap:9px}
+.mlead{color:var(--mute);font-size:14px;margin:-6px 2px 12px}
+.mcard.start{max-height:86vh;overflow:auto}
+.slist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.scand{display:flex;align-items:center;gap:12px;min-height:58px;padding:8px 14px;border-bottom:1px solid var(--line);text-align:left;transition:background-color .15s}
+.scand:last-child{border-bottom:0}
+.scand.on{background:var(--soft)}
+.scand.empty:not(.on){opacity:.55}
+.btn:disabled{opacity:.4}
+
 /* meekijken */
 body.watch .add,body.watch .sug,body.watch .note{display:none}
 .route{display:flex;align-items:flex-start;margin:14px 0 4px;padding:14px 10px 12px;background:var(--surface);border:1px solid var(--line);border-radius:14px}
@@ -498,8 +512,8 @@ for (const [cat, list] of Object.entries(CATALOG_SRC)) for (const name of list.s
 
 /* ---------- toestand ---------- */
 const LIST = "boodschappen";
-const PATH = {items:"lists/" + LIST + "/items", products:"products", stores:"stores", templates:"templates", history:"history", xlists:"xlists", xitems:"xitems", cats:"cats"};
-const S = {items:{}, products:{}, stores:{}, templates:{}, history:{}, xlists:{}, xitems:{}, cats:{}};
+const PATH = {items:"lists/" + LIST + "/items", products:"products", stores:"stores", templates:"templates", history:"history", xlists:"xlists", xitems:"xitems", cats:"cats", state:"state"};
+const S = {items:{}, products:{}, stores:{}, templates:{}, history:{}, xlists:{}, xitems:{}, cats:{}, state:{}};
 let DB = null, user = null, ready = false, sheet = null, flashKey = null, wake = null;
 let trip = []; try { trip = JSON.parse(pref.get("trip", "[]")) || []; } catch {}
 const DAY = 864e5;
@@ -922,6 +936,76 @@ function storeMenuHtml(kind, k, i, cur){
 }
 const multiStore = () => storeList().length > 1;
 const popOpen = () => !!($("popHost").firstChild && !$("popHost").firstChild.classList.contains("out"));
+/* ---------- winkelronde: per winkel een lijst, in de volgorde waarin je ze bezoekt ---------- */
+// Een halte is een supermarkt ("s:<id>", met de boodschappen voor die winkel) of een eigen lijst ("x:<id>", bv. Action).
+const tourOn = () => !!(S.state && S.state.tour && S.state.tour.active && (S.state.tour.stops || []).length);
+let startSel = [];
+function tourStops(stops){
+  stops = stops || (S.state.tour && S.state.tour.stops) || [];
+  const sup = stops.filter(s => s[0] === "s").map(s => s.slice(2)), sl = storeList();
+  // Boodschappen: vaste winkel als die in de ronde zit, zonder voorkeur naar de eerste supermarkt, anders blijft het op de lijst staan.
+  const where = ([k, v]) => { const pr = v.store || (S.products[k] && S.products[k].store) || ""; return pr ? (sup.includes(pr) ? pr : null) : (sup[0] || null); };
+  return stops.map(key => {
+    const id = key.slice(2);
+    if (key[0] === "s") { const st = sl.find(s => s.id === id); return st ? {key, type:"s", id, name:st.name, logo:st.logo, st, entries:Object.entries(S.items).filter(e => where(e) === id)} : null; }
+    const l = S.xlists[id]; return l ? {key, type:"x", id, name:l.name, logo:l.logo, entries:xOf(id)} : null;
+  }).filter(Boolean);
+}
+function curStop(stops){
+  const done = stops.flatMap(s => s.entries.filter(([, v]) => v.checked).map(e => [s, e[1].checkedAt || 0])).sort((a, b) => b[1] - a[1]);
+  const left = s => s.entries.some(([, v]) => !v.checked && !v.missing);
+  return (done[0] && left(done[0][0]) ? done[0][0] : stops.find(left)) || stops[stops.length - 1] || null;
+}
+function renderTour(){
+  const stops = tourStops(), all = stops.flatMap(s => s.entries), done = all.filter(([, v]) => v.checked), cur = curStop(stops);
+  const sup = stops.filter(s => s.type === "s");
+  $("progWrap").hidden = !all.length;
+  $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
+  let h = "";
+  stops.forEach((s, i) => {
+    const open = s.entries.filter(([, v]) => !v.checked && !v.missing);
+    h += "<div class='shead tour" + (i ? "" : " first") + (cur && cur.key === s.key ? " now" : "") + "' id='stop-" + i + "'>" + logoHtml(s.name, s.logo, 26) + "<span>" + esc(s.name) + "</span><small>" + (open.length ? open.length + " te pakken" : "klaar") + "</small></div>";
+    if (!open.length) { h += "<p class='hint stopdone'>" + (s.entries.length ? "Alles van " + esc(s.name) + " is gepakt." : "Niets op de lijst voor " + esc(s.name) + ".") + "</p>"; return; }
+    if (s.type === "x") { h += "<div class='group' style='margin-top:14px'>" + open.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>"; return; }
+    const si = sup.indexOf(s), nx = sup[si + 1] ? sup[si + 1].st : null, prv = sup[si - 1] ? sup[si - 1].st : null;
+    for (const c of order(s.st)) {
+      const rows = open.filter(([, v]) => catOf(v.cat) === c);
+      if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx, null, false, prv)).join("") + "</div>";
+    }
+  });
+  const miss = stops.flatMap(s => s.entries.filter(([, v]) => !v.checked && v.missing).map(e => [e, s]));
+  if (miss.length) h += "<h3 class='ch'>Niet gevonden<span class='n'>" + miss.length + "</span></h3><div class='group'>" + miss.map(([[k, v], s]) => missHtml(k, v, null, s.type === "x")).join("") + "</div>";
+  const cart = stops.flatMap(s => s.entries.filter(([, v]) => v.checked).map(e => [e, s])).sort((a, b) => (b[0][1].checkedAt || 0) - (a[0][1].checkedAt || 0));
+  if (cart.length) h += "<h3 class='ch'>In het karretje<span class='n'>" + cart.length + "</span></h3><div class='group'>" + cart.map(([[k, v], s]) => rowHtml(k, v, null, null, s.type === "x")).join("") + "</div>";
+  $("list").innerHTML = h; flashKey = null;
+  const ci = cur ? stops.indexOf(cur) : 0;
+  return {titleHtml:cur ? "<span class='ttl'>" + logoHtml(cur.name, cur.logo, 26) + esc(cur.name) + "</span>" : "Winkelen",
+    sub:(stops.length > 1 ? "Winkel " + (ci + 1) + " van " + stops.length + " · " : "") + done.length + " van " + all.length + " gepakt",
+    act:"<button class='ibb pri' data-a='finish' aria-label='Klaar met winkelen'>" + ico("check") + "</button>"};
+}
+// Startscherm: welke winkels en in welke volgorde.
+function startCands(){
+  const ok = ([, v]) => !v.checked;
+  const sl = storeList().map(st => ({key:"s:" + st.id, name:st.name, logo:st.logo, n:Object.entries(S.items).filter(e => ok(e) && (e[1].store || (S.products[e[0]] && S.products[e[0]].store) || "") === st.id).length, kind:"Supermarkt"}));
+  const xl = Object.entries(S.xlists).map(([id, l]) => ({key:"x:" + id, name:l.name, logo:l.logo, n:xOf(id).filter(ok).length, kind:"Lijst"}));
+  return sl.concat(xl).sort((a, b) => (b.n > 0) - (a.n > 0) || a.name.localeCompare(b.name));
+}
+function openStart(){
+  const c = startCands(), keys = c.map(x => x.key), prev = ((S.state.tour && S.state.tour.stops) || []).filter(k => keys.includes(k));
+  startSel = prev.length ? prev : c.filter(x => x.n).length === 1 ? [c.find(x => x.n).key] : [];
+  $("modalHost").innerHTML = "<div class='modal' data-a='modalbg'><div class='mcard start' role='dialog' aria-label='Waar ga je winkelen'></div></div>";
+  drawStart();
+}
+function drawStart(){
+  const card = document.querySelector(".mcard.start"); if (!card) return;
+  const c = startCands(), loose = Object.entries(S.items).filter(([k, v]) => !v.checked && !(v.store || (S.products[k] && S.products[k].store))).length;
+  const firstSup = startSel.find(k => k[0] === "s");
+  card.innerHTML = "<h2>Waar ga je winkelen?</h2><p class='mlead'>Tik de winkels aan in de volgorde waarin je ze bezoekt.</p><div class='slist'>" +
+    c.map(x => { const i = startSel.indexOf(x.key); return "<button class='scand" + (i >= 0 ? " on" : "") + (x.n ? "" : " empty") + "' data-a='stsel' data-k='" + esc(x.key) + "'><span class='num" + (i >= 0 ? " on" : "") + "'>" + (i >= 0 ? i + 1 : "") + "</span>" + logoHtml(x.name, x.logo, 30) + "<span class='grow'><span class='ct'>" + esc(x.name) + "</span><span class='cs'>" + (x.n ? nProd(x.n) : "niets op de lijst") + (x.key === firstSup && loose ? " + " + loose + " zonder vaste winkel" : "") + "</span></span></button>"; }).join("") + "</div>" +
+    (loose && !firstSup ? "<p class='mlead' style='margin:10px 2px 0'>" + nProd(loose) + " zonder vaste winkel gaan mee naar de eerste supermarkt die je kiest.</p>" : "") +
+    "<div class='line' style='margin-top:16px'><button class='btn sec grow' data-a='modalclose'>Annuleren</button><button class='btn grow' data-a='stgo'" + (startSel.length ? "" : " disabled") + ">Start winkelen</button></div>";
+}
+
 /* ---------- meekijken: live zien hoe de ander winkelt, zonder iets te kunnen wijzigen ---------- */
 const eyeBtn = () => "<button class='ibb' data-a='watch' aria-label='Meekijken'>" + ico("eye") + "</button>";
 let watchSeen = null, watchTimer = 0, flashQ = [], flashBusy = false;
@@ -940,6 +1024,7 @@ function wrow(v, right, cls){
   return "<div class='wrow" + (cls ? " " + cls : "") + "'>" + (cls === "in" ? "<span class='wc'>" + ico("check") + "</span>" : "") + "<span class='grow'><span class='nm'>" + esc(v.name) + "</span>" + (v.note ? "<span class='nt'>" + esc(v.note) + "</span>" : "") + "</span>" + (bd ? "<span class='qty'>" + bd + "</span>" : "") + (right || "") + "</div>";
 }
 function renderWatch(cur){
+  if (tourOn()) return renderWatchTour();
   const xl = cur !== "boodschappen", all = xl ? xOf(cur) : Object.entries(S.items);
   const done = all.filter(([, v]) => v.checked).sort((a, b) => (b[1].checkedAt || 0) - (a[1].checkedAt || 0));
   const miss = all.filter(([, v]) => !v.checked && v.missing), open = all.filter(([, v]) => !v.checked && !v.missing);
@@ -980,6 +1065,32 @@ function renderWatch(cur){
   return {title:"Meekijken", sub:all.length ? (done.length + " van " + all.length + " gepakt" + (last ? " · laatst " + ago(last.checkedAt) + (last.checkedBy ? " door " + esc(last.checkedBy) : "") : "")) : esc(name),
     act:"<button class='ibb on' data-a='watch' aria-label='Stoppen met meekijken'>" + ico("eye") + "</button>"};
 }
+function renderWatchTour(){
+  const stops = tourStops(), all = stops.flatMap(s => s.entries), cur = curStop(stops);
+  const done = all.filter(([, v]) => v.checked).sort((a, b) => (b[1].checkedAt || 0) - (a[1].checkedAt || 0));
+  $("progWrap").hidden = !all.length;
+  $("prog").style.width = all.length ? (100 * done.length / all.length) + "%" : "0";
+  const keys = new Set(done.map(([k]) => k));
+  if (watchSeen) { const fresh = done.filter(([k]) => !watchSeen.has(k)).reverse().map(e => e[1]); if (fresh.length >= 3) flashQ.push({multi:fresh}); else fresh.forEach(v => flashQ.push(v)); }
+  watchSeen = keys; runFlash();
+  const last = done[0] && done[0][1].checkedAt ? done[0][1] : null, by = S.state.tour.by;
+  let h = "<div class='route'>" + stops.map((s, i) => {
+    const open = s.entries.filter(([, v]) => !v.checked && !v.missing).length, d = s.entries.filter(([, v]) => v.checked).length;
+    const state = s.entries.length && !open ? "klaar" : cur && cur.key === s.key ? "nu" : "straks";
+    return (i ? "<span class='rline" + (state === "straks" ? "" : " on") + "'></span>" : "") + "<div class='rstop " + state + "'>" + logoHtml(s.name, s.logo, 34) + (state === "klaar" ? "<span class='rok'>" + ico("check") + "</span>" : "") + "<b>" + esc(s.name) + "</b><small>" + (state === "klaar" ? "klaar" : state === "nu" ? "nu hier" : "straks") + " · " + d + "/" + s.entries.length + "</small></div>";
+  }).join("") + "</div>";
+  for (const s of stops) {
+    const rows = s.entries.filter(([, v]) => !v.checked && !v.missing); if (!rows.length) continue;
+    if (s.type === "s") { const ord = order(s.st); rows.sort((a, b) => ord.indexOf(catOf(a[1].cat)) - ord.indexOf(catOf(b[1].cat)) || a[1].name.localeCompare(b[1].name)); }
+    h += "<h3 class='ch'>" + (cur && cur.key === s.key ? "Nog te pakken bij " : "Straks bij ") + esc(s.name) + "<span class='n'>" + rows.length + "</span></h3><div class='group'>" + rows.map(([, v]) => wrow(v)).join("") + "</div>";
+  }
+  const miss = all.filter(([, v]) => !v.checked && v.missing);
+  if (miss.length) h += "<h3 class='ch'>Niet gevonden<span class='n'>" + miss.length + "</span></h3><div class='group'>" + miss.map(([, v]) => wrow(v, "", "miss")).join("") + "</div>";
+  if (done.length) h += "<h3 class='ch'>In het karretje<span class='n'>" + done.length + "</span></h3><div class='group'>" + done.map(([, v]) => wrow(v, "<small class='wt'>" + clock(v.checkedAt) + "</small>", "in")).join("") + "</div>";
+  $("list").innerHTML = h; flashKey = null;
+  return {title:"Meekijken", sub:(by ? esc(by) + " winkelt · " : "") + done.length + " van " + all.length + " gepakt" + (last ? " · laatst " + ago(last.checkedAt) : ""),
+    act:"<button class='ibb on' data-a='watch' aria-label='Stoppen met meekijken'>" + ico("eye") + "</button>"};
+}
 // Groot in beeld wat er net het karretje in ging, een voor een.
 function runFlash(){
   if (flashBusy || !flashQ.length) return;
@@ -1006,6 +1117,7 @@ function renderList(){
   $("q").placeholder = cur === "boodschappen" ? "Voeg toe, bv. 2 paprika" : "Voeg toe aan " + S.xlists[cur].name;
   $("demo").style.display = cur === "boodschappen" ? "" : "none";
   if (document.body.classList.contains("watch")) return renderWatch(cur);
+  if (shop && tourOn()) return renderTour();
   if (cur !== "boodschappen") return renderX(cur, shop, cur);
   const all = Object.entries(S.items).sort((a, b) => a[1].name.localeCompare(b[1].name)), done = all.filter(([, v]) => v.checked);
   // Lijstmodus is plannen, winkelmodus is doen: afvinken en Niet gevonden bestaan alleen tijdens het winkelen.
@@ -1229,7 +1341,8 @@ function render(force){
     }
   }
   const sub = !!PARENT[route];
-  $("barIn").innerHTML = (sub ? "<button class='ib back' data-a='back' aria-label='Terug'>" + ico("chevL") + "</button>" : "") + "<div class='grow'><h1" + (sub ? " class='sm'" : "") + ">" + esc(P.title) + "</h1>" + (P.sub ? "<div class='sub'>" + P.sub + "</div>" : "") + "</div>" + (P.act || "");
+  $("barIn").innerHTML = (sub ? "<button class='ib back' data-a='back' aria-label='Terug'>" + ico("chevL") + "</button>" : "") + "<div class='grow'><h1" + (sub ? " class='sm'" : "") + ">" + (P.titleHtml || esc(P.title)) + "</h1>" + (P.sub ? "<div class='sub'>" + P.sub + "</div>" : "") + "</div>" + (P.act || "");
+  document.documentElement.style.setProperty("--toph", $("top").offsetHeight + "px");
   const root = rootOf(route); [...$("tabs").children].forEach((b, i) => b.classList.toggle("on", TABS[i][0] === root));
   renderSug();
 }
@@ -1345,6 +1458,7 @@ const ACT = {
   swmiss:(k, t) => { const col = t.dataset.x ? "xitems" : "items"; swDo(t, k => { const it = S[col][k]; if (!it) return; DB.set(col, k, {missing:true}); toast(it.name + " niet gevonden", "Ongedaan maken", () => DB.set(col, k, {missing:false})); }); },
   swnext:(k, t) => { const s = t.dataset.s, n = t.dataset.n; swDo(t, k => { const it = S.items[k]; if (!it) return; const was = it.store || ""; DB.set("items", k, {store:s}); toast(it.name + " bij " + n + " halen", "Ongedaan maken", () => DB.set("items", k, {store:was})); }); },
   finish:finish, finishok:() => { closeModal(); finishNow(); }, modalclose:closeModal,
+  tourstop:() => { closeModal(); DB.set("state", "tour", {active:false}); setShop(false); },
   next:(k, t) => { const it = S.items[k], s = t.dataset.s, was = storeOf(k, it, tripStores().map(x => x.id)); flashKey = k; DB.set("items", k, {store:s}); toast(it.name + " verplaatst naar " + t.dataset.n, "Ongedaan maken", () => { flashKey = k; DB.set("items", k, {store:was}); }); },
   stoggle:(k, t) => { const it = S.items[k], on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => DB.set("products", k, {name:it.name, cat:it.cat, staple:on}), 200); },
   clear:clearDone,
@@ -1352,7 +1466,18 @@ const ACT = {
   quick:k => { const p = product(k); if (p) addItem(p.name); $("q").focus(); },
   dueadd:k => { const p = product(k); if (p) addItem(p.name); },
   snooze:k => { const p = product(k); if (!p) return; const r = rhythm(p); DB.set("products", k, {name:p.name, cat:p.cat, snooze:Date.now() + (r ? r.days : 4) * DAY / 2}); },
-  shop:() => { const on = !document.body.classList.contains("shop"); setShop(on); window.scrollTo(0, 0); if (on) toast("Tik om af te vinken, veeg opzij voor meer opties"); },
+  shop:() => {
+    if (document.body.classList.contains("shop")) { setShop(false); return; }
+    if (tourOn()) { setShop(true); window.scrollTo(0, 0); return; }
+    openStart();
+  },
+  stsel:k => { const i = startSel.indexOf(k); if (i >= 0) startSel.splice(i, 1); else startSel.push(k); drawStart(); },
+  stgo:() => {
+    if (!startSel.length) return;
+    DB.set("state", "tour", {stops:startSel.slice(), active:true, by:me(), at:Date.now()});
+    const sup = startSel.filter(s => s[0] === "s").map(s => s.slice(2)); if (sup.length) setTrip(sup);
+    closeModal(); watchSeen = null; setShop(true); window.scrollTo(0, 0); toast("Tik om af te vinken, veeg opzij voor meer opties");
+  },
   share:() => {
     const lines = [], ts = tripStores(), ids = ts.map(s => s.id), xl = curList();
     if (xl !== "boodschappen") { const r = xOf(xl).filter(([, v]) => !v.checked).map(e => e[1]); if (r.length) lines.push(S.xlists[xl].name + ":", ...r.map(v => "- " + (v.unit ? amount(v) + " " : (v.qty || 1) > 1 ? v.qty + "x " : "") + v.name + (v.note ? " (" + v.note + ")" : ""))); }
@@ -1492,6 +1617,10 @@ addEventListener("hashchange", () => { closePop(); closeModal(); onRoute(); });
 
 /* ---------- afronden ---------- */
 function roundStats(){
+  if (tourOn()) {
+    const all = tourStops().flatMap(s => s.entries.map(e => [e[0], e[1], s.type]));
+    return {l:"tour", all, done:all.filter(([, v]) => v.checked), miss:all.filter(([, v]) => !v.checked && v.missing), rest:all.filter(([, v]) => !v.checked && !v.missing)};
+  }
   const l = curList(), all = l === "boodschappen" ? Object.entries(S.items) : xOf(l);
   return {l, all, done:all.filter(([, v]) => v.checked), miss:all.filter(([, v]) => !v.checked && v.missing), rest:all.filter(([, v]) => !v.checked && !v.missing)};
 }
@@ -1500,14 +1629,25 @@ function finish(){
   if (!r.done.length && !r.miss.length) { setShop(false); window.scrollTo(0, 0); return; }
   const line = (n, t, s) => "<div class='stat'><b>" + n + "</b><span class='grow'>" + t + "</span>" + (s ? "<small>" + s + "</small>" : "") + "</div>";
   $("modalHost").innerHTML = "<div class='modal' data-a='modalbg'><div class='mcard' role='dialog' aria-label='Klaar met winkelen'><h2>Klaar met winkelen</h2>" +
-    line(r.done.length, r.done.length === 1 ? "product gepakt" : "producten gepakt", r.l === "boodschappen" ? "naar Vorige lijsten" : "van de lijst") +
+    line(r.done.length, r.done.length === 1 ? "product gepakt" : "producten gepakt", r.l === "boodschappen" ? "naar Vorige lijsten" : r.l === "tour" ? "worden opgeruimd" : "van de lijst") +
     (r.miss.length ? line(r.miss.length, "niet gevonden", "blijven op de lijst") : "") +
     (r.rest.length ? line(r.rest.length, "nog niet gepakt", "blijven op de lijst") : "") +
     "<div class='line' style='margin-top:18px'><button class='btn sec grow' data-a='modalclose'>Verder winkelen</button><button class='btn grow' data-a='finishok'>Afronden</button></div></div></div>";
 }
 function closeModal(){ const m = $("modalHost").firstChild; if (!m) return; m.classList.add("out"); setTimeout(() => { if ($("modalHost").firstChild === m) $("modalHost").innerHTML = ""; }, 160); }
 function finishNow(){
-  const r = roundStats(), col = r.l === "boodschappen" ? "items" : "xitems";
+  const r = roundStats();
+  if (r.l === "tour") {
+    r.miss.forEach(([k, , t]) => DB.set(t === "x" ? "xitems" : "items", k, {missing:false}));
+    const xd = r.done.filter(e => e[2] === "x").map(([k, v]) => [k, v]);
+    DB.set("state", "tour", {active:false});
+    setShop(false, true); window.scrollTo(0, 0);
+    if (Object.values(S.items).some(v => v.checked)) clearDone();
+    xd.forEach(([k]) => DB.del("xitems", k));
+    if (xd.length) toast("Winkelronde afgerond: " + nProd(r.done.length) + " gepakt", "Ongedaan maken", () => xd.forEach(([k, v]) => DB.set("xitems", k, v)));
+    render(true); return;
+  }
+  const col = r.l === "boodschappen" ? "items" : "xitems";
   r.miss.forEach(([k]) => DB.set(col, k, {missing:false}));
   setShop(false, true); window.scrollTo(0, 0);
   if (r.l === "boodschappen") clearDone(); else ACT.xclear();
