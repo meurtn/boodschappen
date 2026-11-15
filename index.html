@@ -705,6 +705,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
+const APP_V = "42";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -1289,7 +1290,8 @@ PAGES.instellingen = () => {
     "<h3 class='ch'>Account</h3><div class='group'>" + (user
       ? "<div class='cell'><span class='grow'>Naam</span><span class='qty'>" + esc(user.displayName || "") + "</span></div><div class='cell'><span class='grow'>E-mail</span><span class='qty'>" + esc(user.email || "") + "</span></div>"
       : "<div class='cell'><span class='grow'><span class='ct'>Demomodus</span><span class='cs'>Niet gekoppeld, alles staat alleen in deze browser</span></span></div>") + "</div>" +
-    (user ? "<button class='btn text danger wide' data-a='signout'>Uitloggen</button>" : "")};
+    (user ? "<button class='btn text danger wide' data-a='signout'>Uitloggen</button>" : "") +
+    "<p class='hint' style='text-align:center;margin-top:18px'>Versie " + APP_V + "</p>"};
 };
 PAGES.ding = () => {
   const k = args.ding, it = S.xitems[k]; if (!it) return gone();
