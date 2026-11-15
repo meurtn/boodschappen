@@ -82,6 +82,8 @@ h1,h2,h3,p{margin:0}
 .ibb .i{width:20px;height:20px}
 .ibb:active{transform:scale(.93)}
 .ibb.on{background:var(--soft);border-color:transparent}
+.ibb.pri{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+.ibb.pri .i{stroke-width:2}
 .ibb.dot::after{content:"";position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:var(--q2);box-shadow:0 0 0 2px var(--surface)}
 .barin .ibb+.ibb{margin-left:2px}
 .pop{position:fixed;z-index:25;min-width:220px;max-width:calc(100vw - 24px);max-height:60vh;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 12px 36px rgba(0,0,0,.18);transform-origin:top right;animation:popin .16s var(--ease)}
@@ -115,7 +117,12 @@ h1,h2,h3,p{margin:0}
 .note{color:var(--mute);font-size:13px;margin:0 2px 4px}
 .offline{font-size:13px;color:var(--mute);text-align:center;padding:6px 0 0}
 .shead{display:flex;align-items:center;gap:10px;margin:26px 2px -8px;font-size:17px;font-weight:600;letter-spacing:-.005em}
-.shead b{width:22px;height:22px;border-radius:50%;background:var(--text);color:var(--bg);display:grid;place-items:center;font-size:12.5px;font-weight:600}
+.lg{border-radius:50%;flex:none;object-fit:cover;background:#fff;box-shadow:0 0 0 1px var(--line)}
+.lgf{display:grid;place-items:center;color:#fff;font-weight:600;box-shadow:none;line-height:1}
+.lgbtn{flex:none;display:grid;place-items:center;margin-right:2px}
+.cell .lg+.tb{margin-left:4px}
+.navrow .lg{margin-right:4px}
+.popi .lg{margin-right:-2px}
 .shead small{margin-left:auto;font-size:13px;font-weight:400;color:var(--mute)}
 
 /* lijsten */
@@ -284,6 +291,8 @@ body:has(.sorting){user-select:none;-webkit-user-select:none}
 
 /* winkelmodus */
 body.shop .add,body.shop .sug,body.shop .step,body.shop .tabs,body.shop .note{display:none}
+body.shop{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+body.shop .toast{bottom:calc(20px + env(safe-area-inset-bottom))}
 body.shop .row{min-height:60px}
 body.shop .nm{font-size:17px}
 body.shop .tick .c{width:26px;height:26px}
@@ -338,10 +347,10 @@ body:not(.shop) .shoponly,body:not(.shop) .nx,body:not(.shop) .shopbar{display:n
 </main>
 
 <nav class="tabs"><div id="tabs"></div></nav>
-<div class="shopbar"><button class="btn wide" data-a="finish">Klaar met winkelen</button></div>
 <div id="toastHost"></div>
 <div id="popHost"></div>
 <div id="modalHost"></div>
+<input type="file" id="logoFile" accept="image/*" hidden>
 
 <script src="firebase-config.js"></script>
 <script>
@@ -447,7 +456,7 @@ const product = k => { const c = CATALOG[k], p = S.products[k]; return (c || (p 
 const allProducts = () => { const ks = new Set([...Object.keys(CATALOG), ...Object.keys(S.products)]); return [...ks].map(product).filter(Boolean); };
 const onList = k => S.items[k] && !S.items[k].checked;
 function guessCat(name){ const k = " " + keyOf(name) + " "; for (const [c, words] of Object.entries(GUESS)) if (words.some(w => k.includes(w))) return c; return "overig"; }
-function storeList(){ const o = {standaard:{name:"Standaard"}, ...S.stores}; return Object.entries(o).map(([id, s]) => ({id, name:s.name || id, order:s.order})).sort((a, b) => a.name.localeCompare(b.name, "nl", {sensitivity:"base"})); }
+function storeList(){ const o = {standaard:{name:"Standaard"}, ...S.stores}; return Object.entries(o).map(([id, s]) => ({id, name:s.name || id, order:s.order, logo:s.logo || ""})).sort((a, b) => a.name.localeCompare(b.name, "nl", {sensitivity:"base"})); }
 // De route van vandaag: de winkels in de volgorde waarin je ze bezoekt (per apparaat onthouden).
 function tripStores(){ const all = storeList(), t = trip.map(id => all.find(s => s.id === id)).filter(Boolean); return t.length ? t : [all.find(s => s.id === "standaard")]; }
 function setTrip(t){ trip = t; pref.set("trip", JSON.stringify(t)); render(); }
@@ -696,6 +705,15 @@ const catHead = (c, right) => "<h3 class='ch'><span class='em'>" + CAT[c].ico + 
 const empty = (icon, title, text) => "<div class='empty'><div class='eb'>" + ico(icon) + "</div><h2>" + esc(title) + "</h2><p>" + esc(text) + "</p></div>";
 const navCell = (to, arg, title, sub, icon) => "<button class='cell' data-a='nav' data-k='" + to + "'" + (arg !== undefined ? " data-arg='" + esc(arg) + "'" : "") + ">" + (icon ? ico(icon) : "") + "<span class='grow'><span class='ct'>" + title + "</span>" + (sub ? "<span class='cs'>" + sub + "</span>" : "") + "</span>" + ico("chevR") + "</button>";
 const gone = () => ({title:"", html:""});
+// Winkellogo: een eigen plaatje als dat er is, anders een rondje met de beginletter in een vaste kleur.
+function logoHtml(name, logo, size){
+  const s = "width:" + size + "px;height:" + size + "px";
+  if (logo) return "<img class='lg' src='" + esc(logo) + "' alt='' style='" + s + "'>";
+  let hsh = 0; for (const ch of String(name || "?")) hsh = (hsh * 31 + ch.charCodeAt(0)) >>> 0;
+  return "<span class='lg lgf' style='" + s + ";font-size:" + Math.round(size * .46) + "px;background:hsl(" + (hsh % 360) + " 45% 46%)'>" + esc((String(name || "?").trim()[0] || "?").toUpperCase()) + "</span>";
+}
+const logoCell = (col, id, name, logo) => "<div class='cell'><span class='grow'><span class='ct'>Logo</span><span class='cs'>Plaatje van je telefoon</span></span>" + logoHtml(name, logo, 36) +
+  "<button class='tb' data-a='logo' data-c='" + col + "' data-k='" + esc(id) + "'>" + (logo ? "Wijzig" : "Kies") + "</button>" + (logo ? "<button class='ib sm' data-a='logodel' data-c='" + col + "' data-k='" + esc(id) + "' aria-label='Logo verwijderen'>" + ico("x") + "</button>" : "") + "</div>";
 const storeName = id => { const s = storeList().find(s => s.id === id); return s ? s.name : ""; };
 
 /* ---------- suggesties ---------- */
@@ -814,14 +832,14 @@ function renderX(l, shop, cur){
     h += "<h3 class='ch'>In het karretje<span class='n'>" + done.length + "</span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>";
   }
   $("list").innerHTML = h; flashKey = null;
-  return {title:shop ? "Winkelen bij " + name : name, sub:shop && all.length ? done.length + " van " + all.length + " gepakt" : "", act:shop ? "" : listBtnHtml(cur) + (all.some(([, v]) => !v.checked) ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
+  return {title:shop ? "Winkelen bij " + name : name, sub:shop && all.length ? done.length + " van " + all.length + " gepakt" : "", act:shop ? "<button class='ibb pri' data-a='finish' aria-label='Klaar met winkelen'>" + ico("check") + "</button>" : listBtnHtml(cur) + (all.some(([, v]) => !v.checked) ? "<button class='ibb pri' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
 }
 // Lijstkeuze: icoon rechtsboven, opent een klein menu met alle lijsten.
 const openCount = id => id === "boodschappen" ? Object.values(S.items).filter(v => !v.checked).length : xOf(id).filter(([, v]) => !v.checked).length;
 const allLists = () => [["boodschappen", "Boodschappen"]].concat(Object.entries(S.xlists).sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([id, l]) => [id, l.name]));
 function popHtml(){
   const cur = curList();
-  return "<div class='pop' role='menu'>" + allLists().map(([id, n]) => { const c = openCount(id); return "<button class='popi" + (id === cur ? " on" : "") + "' data-a='setlist' data-k='" + esc(id) + "' role='menuitemradio' aria-checked='" + (id === cur) + "'><span class='pc'>" + (id === cur ? ico("check") : "") + "</span><span class='grow'>" + esc(n) + "</span>" + (c ? "<span class='pn'>" + c + "</span>" : "") + "</button>"; }).join("") +
+  return "<div class='pop' role='menu'>" + allLists().map(([id, n]) => { const c = openCount(id); return "<button class='popi" + (id === cur ? " on" : "") + "' data-a='setlist' data-k='" + esc(id) + "' role='menuitemradio' aria-checked='" + (id === cur) + "'><span class='pc'>" + (id === cur ? ico("check") : "") + "</span>" + (id === "boodschappen" ? "" : logoHtml(n, (S.xlists[id] || {}).logo, 22)) + "<span class='grow'>" + esc(n) + "</span>" + (c ? "<span class='pn'>" + c + "</span>" : "") + "</button>"; }).join("") +
     "<div class='popsep'></div><button class='popi' data-a='newlist'><span class='pc'>" + ico("plus") + "</span><span class='grow'>Nieuwe lijst</span></button><button class='popi' data-a='nav' data-k='lijsten'><span class='pc'>" + ico("edit") + "</span><span class='grow'>Lijsten beheren</span></button></div>";
 }
 function openPop(){
@@ -857,7 +875,7 @@ function renderList(){
   else if (!open.length && !miss.length) h += empty("check", "Alles in het karretje", "Rond af om het bezoek te bewaren bij Vorige lijsten.") + "<div class='line center'><button class='btn' data-a='finish'>Afronden</button></div>";
   ts.forEach((st, si) => {
     const mine = open.filter(([k, v]) => storeOf(k, v, ids) === st.id); if (!mine.length) return;
-    if (multi) h += "<div class='shead'><b>" + (si + 1) + "</b><span>" + esc(st.name) + "</span><small>" + mine.length + " te pakken</small></div>";
+    if (multi) h += "<div class='shead'>" + logoHtml(st.name, st.logo, 26) + "<span>" + esc(st.name) + "</span><small>" + mine.length + " te pakken</small></div>";
     const nx = shop ? ts[si + 1] || null : null;
     for (const c of order(st)) {
       const rows = mine.filter(([, v]) => catOf(v.cat) === c);
@@ -874,7 +892,7 @@ function renderList(){
     title: shop ? "Winkelen" : "Boodschappen",
     // Voortgang en winkelroute alleen tijdens het winkelen.
     sub: shop ? (all.length ? done.length + " van " + all.length + " gepakt" : "Nog niets op de lijst") + (ids.some(i => i !== "standaard") ? " · " + esc(ts.map(s => s.name).join(" → ")) : "") : "",
-    act: shop ? "" : listBtnHtml(cur) + (all.some(([, v]) => !v.checked) ? "<button class='ibb' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")
+    act: shop ? "<button class='ibb pri' data-a='finish' aria-label='Klaar met winkelen'>" + ico("check") + "</button>" : listBtnHtml(cur) + (all.some(([, v]) => !v.checked) ? "<button class='ibb pri' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")
   };
 }
 
@@ -930,7 +948,7 @@ PAGES.winkels = () => {
   const ts = tripStores();
   return {title:"Winkels", html:
     "<p class='lead'>Tik de rondjes aan in de volgorde waarin je de winkels vandaag bezoekt. Tik op een winkel om de naam, de looproute of de winkel zelf te beheren.</p><div class='group'>" +
-    storeList().map(s => { const i = ts.findIndex(t => t.id === s.id), a = " data-k='" + esc(s.id) + "'"; return "<div class='cell' style='padding-left:4px'><button class='numhit' data-a='trip'" + a + " aria-label='" + (i >= 0 ? "Uit" : "In") + " route van vandaag'><span class='num" + (i >= 0 ? " on" : "") + "'>" + (i >= 0 ? i + 1 : "") + "</span></button><button class='grow navrow' data-a='nav' data-k='looproute' data-arg='" + esc(s.id) + "'><span class='grow'>" + esc(s.name) + "</span>" + ico("chevR") + "</button></div>"; }).join("") + "</div>" +
+    storeList().map(s => { const i = ts.findIndex(t => t.id === s.id), a = " data-k='" + esc(s.id) + "'"; return "<div class='cell' style='padding-left:4px'><button class='numhit' data-a='trip'" + a + " aria-label='" + (i >= 0 ? "Uit" : "In") + " route van vandaag'><span class='num" + (i >= 0 ? " on" : "") + "'>" + (i >= 0 ? i + 1 : "") + "</span></button><button class='grow navrow' data-a='nav' data-k='looproute' data-arg='" + esc(s.id) + "'>" + logoHtml(s.name, s.logo, 26) + "<span class='grow'>" + esc(s.name) + "</span>" + ico("chevR") + "</button></div>"; }).join("") + "</div>" +
     "<h3 class='ch'>Winkel toevoegen</h3><div class='line'><input class='field' id='sName' placeholder='bv. Lidl' enterkeyhint='done' data-enter='sadd'><button class='btn' data-a='sadd'>Toevoegen</button></div>" +
     "<p class='hint'>Producten zonder vaste winkel staan bij de eerste winkel van je route. Een vaste winkel kies je bij het product zelf.</p>"};
 };
@@ -938,7 +956,7 @@ PAGES.looproute = () => {
   const st = storeList().find(s => s.id === args.looproute); if (!st) return gone();
   const ord = order(st), mv = args.moved; args.moved = null;
   return {title:st.name, html:
-    "<div class='group'><label class='cell'><span class='lbl'>Naam</span><input class='inl grow' id='stoName' data-k='" + esc(st.id) + "' value='" + esc(st.name) + "' enterkeyhint='done'></label></div>" +
+    "<div class='group'><label class='cell'><span class='lbl'>Naam</span><input class='inl grow' id='stoName' data-k='" + esc(st.id) + "' value='" + esc(st.name) + "' enterkeyhint='done'></label>" + logoCell("stores", st.id, st.name, st.logo) + "</div>" +
     "<h3 class='ch'>Looproute</h3><p class='lead' style='margin-top:0'>Sleep de schappen aan het greepje rechts in de volgorde waarin je door de winkel loopt.</p><div class='group' id='sortList'>" +
     ord.map(c => "<div class='cell" + (mv === c ? " flash" : "") + "'><span class='em'>" + CAT[c].ico + "</span><span class='grow'>" + esc(CAT[c].name) + "</span><span class='grip' aria-hidden='true'>" + ico("grip") + "</span></div>").join("") + "</div>" +
     (st.id !== "standaard" ? "<button class='btn text danger wide' data-a='sdel'>Winkel verwijderen</button>" : "<p class='hint'>De standaardwinkel kun je hernoemen, maar niet verwijderen.</p>")};
@@ -995,7 +1013,7 @@ PAGES.lijsten = () => {
   const ls = Object.entries(S.xlists).sort((a, b) => a[1].name.localeCompare(b[1].name));
   return {title:"Lijsten", html:
     "<p class='lead'>Extra lijsten voor andere winkels, zoals Action, Ikea of Kruidvat. Zonder schappen, winkelvolgorde of looproute: gewoon een lijstje per winkel.</p>" +
-    (ls.length ? "<div class='group'>" + ls.map(([id, l]) => { const n = xOf(id).filter(([, v]) => !v.checked).length; return "<div class='cell'><input class='inl left grow' data-ln='" + esc(id) + "' value='" + esc(l.name) + "' enterkeyhint='done' aria-label='Naam van de lijst'><span class='qty'>" + (n ? n + " open" : "leeg") + "</span><button class='ib sm' data-a='ldel' data-k='" + esc(id) + "' aria-label='Lijst verwijderen'>" + ico("x") + "</button></div>"; }).join("") + "</div><p class='hint' style='margin:-4px 2px 0'>Tik op een naam om hem te wijzigen.</p>" : "") +
+    (ls.length ? "<div class='group'>" + ls.map(([id, l]) => { const n = xOf(id).filter(([, v]) => !v.checked).length; return "<div class='cell'><button class='lgbtn' data-a='logo' data-c='xlists' data-k='" + esc(id) + "' aria-label='Logo kiezen'>" + logoHtml(l.name, l.logo, 30) + "</button><input class='inl left grow' data-ln='" + esc(id) + "' value='" + esc(l.name) + "' enterkeyhint='done' aria-label='Naam van de lijst'><span class='qty'>" + (n ? n + " open" : "leeg") + "</span><button class='ib sm' data-a='ldel' data-k='" + esc(id) + "' aria-label='Lijst verwijderen'>" + ico("x") + "</button></div>"; }).join("") + "</div><p class='hint' style='margin:-4px 2px 0'>Tik op een naam om hem te wijzigen, of op het rondje om een logo te kiezen.</p>" : "") +
     "<h3 class='ch'>Lijst toevoegen</h3><div class='line'><input class='field' id='lName' placeholder='bv. Action' enterkeyhint='done' autocapitalize='sentences' data-enter='ladd'><button class='btn' data-a='ladd'>Toevoegen</button></div>"};
 };
 PAGES.product = () => {
@@ -1109,6 +1127,8 @@ const ACT = {
   cathide:(k, t) => { const on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => DB.set("cats", k, {hidden:!on}), 200); },
   catreset:k => { const o = S.cats[k] || {}; DB.set("cats", k, {...o, name:"", ico:""}); render(true); },
   catdel:k => { const old = S.cats[k]; if (!old) return; back(); DB.del("cats", k); toast("Schap " + old.name + " verwijderd", "Ongedaan maken", () => DB.set("cats", k, old)); },
+  logo:(k, t) => { logoTarget = {col:t.dataset.c, id:k}; const f = $("logoFile"); f.value = ""; f.click(); },
+  logodel:(k, t) => { const col = t.dataset.c, old = (col === "stores" ? storeList().find(s => s.id === k) : S.xlists[k]) || {}; logoSave(col, k, ""); toast("Logo verwijderd", "Ongedaan maken", () => logoSave(col, k, old.logo || "")); },
   lists:() => popOpen() ? closePop() : openPop(),
   newlist:() => { closePop(); go("lijsten"); setTimeout(() => { const i = $("lName"); if (i) i.focus(); }, 300); },
   setlist:k => { closePop(); if (k === curList()) return; pref.set("list", k); $("q").value = ""; setShop(false, true); render(true); window.scrollTo(0, 0); const m = $("pgList"); m.classList.remove("swap"); void m.offsetWidth; m.classList.add("swap"); },
@@ -1263,6 +1283,28 @@ $("q").addEventListener("input", renderSug);
 $("q").addEventListener("focus", renderSug);
 $("q").addEventListener("blur", () => setTimeout(renderSug, 180));
 $("sug").addEventListener("pointerdown", e => e.preventDefault());
+/* ---------- logo's: eenmalig zelf een plaatje kiezen, verkleind bewaard bij de winkel ---------- */
+let logoTarget = null;
+function logoSave(col, id, logo){
+  if (col === "stores") { const st = storeList().find(s => s.id === id); if (st) DB.set("stores", id, {name:st.name, order:order(st), logo}); }
+  else DB.set(col, id, {logo});
+  render(true);
+}
+$("logoFile").addEventListener("change", e => {
+  const f = e.target.files && e.target.files[0], tg = logoTarget; if (!f || !tg) return;
+  const url = URL.createObjectURL(f), img = new Image();
+  img.onload = () => {
+    const N = 96, c = document.createElement("canvas"); c.width = c.height = N;
+    const x = c.getContext("2d"), s = Math.min(img.width, img.height);
+    x.imageSmoothingQuality = "high";
+    x.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, N, N);
+    URL.revokeObjectURL(url);
+    let d = c.toDataURL("image/webp", .9); if (!d.startsWith("data:image/webp")) d = c.toDataURL("image/png");
+    logoSave(tg.col, tg.id, d); toast("Logo bewaard");
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); toast("Dit bestand kan ik niet als plaatje lezen"); };
+  img.src = url;
+});
 addEventListener("hashchange", () => { closePop(); closeModal(); onRoute(); });
 
 /* ---------- afronden ---------- */
