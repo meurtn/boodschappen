@@ -295,6 +295,17 @@ body:has(.sorting){user-select:none;-webkit-user-select:none}
 .shead.tour.first{border-top:0;margin-top:4px}
 .shead.tour.now small{color:var(--acc);font-weight:500}
 .stopdone{margin:12px 2px 4px}
+/* Elke winkel in de ronde als eigen kaart */
+:root{--card:#f7f9fc}:root[data-theme=dark]{--card:#151b23}
+.stopcard{background:var(--card);border:1px solid var(--line);border-radius:22px;margin:14px -6px 0;padding:0 12px 14px;box-shadow:0 1px 2px rgba(20,35,60,.04)}
+.stopcard:first-of-type{margin-top:6px}
+.stopcard.now{border-color:color-mix(in srgb,var(--acc) 35%,var(--line))}
+.stopcard .shead.tour,.stopcard .shead.tour.first{margin:0 -12px 2px;padding:14px 12px 10px;border-top:0;background:var(--card);border-radius:22px 22px 0 0}
+.stopcard .ch:first-of-type{margin-top:8px}
+.stopcard .stopdone{margin:4px 2px 0}
+.stopcard>.group:last-child{margin-bottom:0}
+.stopcard{padding-bottom:12px}
+.stopcard .shead+.group{margin-top:4px!important}
 .ttl{display:inline-flex;align-items:center;gap:9px}
 .mnote{background:var(--soft);color:var(--acc);border-radius:12px;padding:10px 12px;font-size:14px;margin:0 0 12px}
 .mlead{color:var(--mute);font-size:14px;margin:-6px 2px 12px}
@@ -705,7 +716,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "42";
+const APP_V = "43";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -994,7 +1005,8 @@ function renderTour(){
   let h = "";
   stops.forEach((s, i) => {
     const open = s.entries.filter(([, v]) => !v.checked && !v.missing);
-    h += "<div class='shead tour" + (i ? "" : " first") + (cur && cur.key === s.key ? " now" : "") + "' id='stop-" + i + "'>" + (s.type === "x" ? "<span class='lg lgnone' style='width:26px;height:26px'>" + ico("list") + "</span>" : logoHtml(s.name, s.logo, 26)) + "<span>" + esc(s.name) + "</span><small>" + (open.length ? open.length + " te pakken" : "klaar") + "</small></div>";
+    if (i) h += "</section>";
+    h += "<section class='stopcard" + (cur && cur.key === s.key ? " now" : "") + "'><div class='shead tour" + (i ? "" : " first") + (cur && cur.key === s.key ? " now" : "") + "' id='stop-" + i + "'>" + (s.type === "x" ? "<span class='lg lgnone' style='width:26px;height:26px'>" + ico("list") + "</span>" : logoHtml(s.name, s.logo, 26)) + "<span>" + esc(s.name) + "</span><small>" + (open.length ? open.length + " te pakken" : "klaar") + "</small></div>";
     if (!open.length) { h += "<p class='hint stopdone'>" + (s.entries.length ? "Alles van " + esc(s.name) + " is gepakt." : "Niets op de lijst voor " + esc(s.name) + ".") + "</p>"; return; }
     if (s.type === "x") { h += "<div class='group' style='margin-top:14px'>" + open.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>"; return; }
     if (s.st.plain) { h += "<div class='group' style='margin-top:14px'>" + open.map(([k, v]) => rowHtml(k, v)).join("") + "</div>"; return; }
@@ -1004,6 +1016,7 @@ function renderTour(){
       if (rows.length) h += catHead(c, rows.length) + "<div class='group'>" + rows.map(([k, v]) => rowHtml(k, v, nx, null, false, prv)).join("") + "</div>";
     }
   });
+  if (stops.length) h += "</section>";
   const miss = stops.flatMap(s => s.entries.filter(([, v]) => !v.checked && v.missing).map(e => [e, s]));
   if (miss.length) h += "<h3 class='ch'>Niet gevonden<span class='n'>" + miss.length + "</span></h3><div class='group'>" + miss.map(([[k, v], s]) => missHtml(k, v, null, s.type === "x")).join("") + "</div>";
   const cart = stops.flatMap(s => s.entries.filter(([, v]) => v.checked).map(e => [e, s])).sort((a, b) => (b[0][1].checkedAt || 0) - (a[0][1].checkedAt || 0));
