@@ -308,6 +308,9 @@ body:has(.sorting){user-select:none;-webkit-user-select:none}
 .stopcard .shead+.group{margin-top:4px!important}
 .ttl{display:inline-flex;align-items:center;gap:9px}
 .mnote{background:var(--soft);color:var(--acc);border-radius:12px;padding:10px 12px;font-size:14px;margin:0 0 12px}
+.onlyone{display:flex;align-items:center;gap:10px;justify-content:flex-start;text-align:left;margin:2px 0 4px;padding:12px 14px}
+.onlyone small{font-size:13px;opacity:.85;font-weight:400}
+.orline{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:13px;margin:12px 2px 10px}.orline:before,.orline:after{content:"";flex:1;height:1px;background:var(--line)}
 .mlead{color:var(--mute);font-size:14px;margin:-6px 2px 12px}
 .mcard.start{max-height:86vh;overflow:auto}
 .slist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden}
@@ -716,7 +719,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "43";
+const APP_V = "44";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -1041,17 +1044,21 @@ function tourStale(){
 }
 function openStart(mode){
   startMode = mode || "new";
-  const c = startCands(), keys = c.map(x => x.key), prev = ((S.state.tour && S.state.tour.stops) || []).filter(k => keys.includes(k));
+  const t = S.state.tour || {}, c = startCands(), keys = c.map(x => x.key), prev = ((startMode === "edit" ? t.stops : t.route || t.stops) || []).filter(k => keys.includes(k));
   startSel = prev.length ? prev.slice() : c.filter(x => x.n).length === 1 ? [c.find(x => x.n).key] : [];
   $("modalHost").innerHTML = "<div class='modal' data-a='modalbg'><div class='mcard start' role='dialog' aria-label='Waar ga je winkelen'></div></div>";
   drawStart();
 }
+const curKey = () => { const c = curList(); return c === "boodschappen" ? null : c.startsWith("s:") ? c : "x:" + c; };
 function drawStart(){
   const card = document.querySelector(".mcard.start"); if (!card) return;
   const c = startCands(), loose = listEntries("boodschappen").filter(([, v]) => !v.checked).length;
   const firstSup = startSel.find(k => (c.find(x => x.key === k) || {}).sup);
   const edit = startMode === "edit", stale = startMode === "stale";
+  // Snel alleen de lijst die nu open staat, zonder de onthouden route aan te passen.
+  const ck = curKey(), one = !edit && ck && c.find(x => x.key === ck && x.n);
   card.innerHTML = "<h2>" + (edit ? "Winkelronde aanpassen" : "Waar ga je winkelen?") + "</h2>" +
+    (one ? "<button class='btn wide onlyone' data-a='stone' data-k='" + esc(ck) + "'>" + (one.loose ? "<span class='lg lgnone' style='width:24px;height:24px'>" + ico("list") + "</span>" : logoHtml(one.name, one.logo, 24)) + "<span class='grow'>Alleen " + esc(one.name) + "</span><small>" + nProd(one.n) + "</small></button><p class='orline'><span>of kies je route</span></p>" : "") +
     (stale ? "<p class='mnote'>Je vorige winkelronde is nooit afgerond. Start een nieuwe ronde, of ga verder waar je gebleven was.</p>" : "") +
     "<p class='mlead'>Tik de winkels aan in de volgorde waarin je ze bezoekt." + (edit ? " Wat al in het karretje ligt, blijft daar." : "") + "</p><div class='slist'>" +
     c.map(x => { const i = startSel.indexOf(x.key); return "<button class='scand" + (i >= 0 ? " on" : "") + (x.n ? "" : " empty") + "' data-a='stsel' data-k='" + esc(x.key) + "'><span class='num" + (i >= 0 ? " on" : "") + "'>" + (i >= 0 ? i + 1 : "") + "</span>" + (x.loose ? "<span class='lg lgnone' style='width:30px;height:30px'>" + ico("list") + "</span>" : logoHtml(x.name, x.logo, 30)) + "<span class='grow'><span class='ct'>" + esc(x.name) + "</span><span class='cs'>" + (x.n ? nProd(x.n) : "niets op de lijst") + (x.key === firstSup && loose ? " + " + loose + " van Boodschappen" : "") + "</span></span></button>"; }).join("") + "</div>" +
@@ -1522,12 +1529,14 @@ const ACT = {
   },
   tourEdit:() => openStart("edit"),
   stresume:() => { closeModal(); DB.set("state", "tour", {at:Date.now()}); setShop(true); window.scrollTo(0, 0); },
+  stone:k => { startSel = [k]; ACT.stgo(true); },
   stsel:k => { const i = startSel.indexOf(k); if (i >= 0) startSel.splice(i, 1); else startSel.push(k); drawStart(); },
-  stgo:() => {
+  stgo:only => {
     if (!startSel.length) return;
-    if (startMode === "edit") { DB.set("state", "tour", {stops:startSel.slice(), at:Date.now()}); closeModal(); render(true); toast("Winkelronde aangepast"); return; }
+    if (startMode === "edit") { const single = S.state.tour && S.state.tour.single; DB.set("state", "tour", single ? {stops:startSel.slice(), at:Date.now()} : {stops:startSel.slice(), route:startSel.slice(), at:Date.now()}); closeModal(); render(true); toast("Winkelronde aangepast"); return; }
     if (startMode === "stale") finishNow(true);
-    DB.set("state", "tour", {stops:startSel.slice(), active:true, by:me(), at:Date.now()});
+    const keep = (S.state.tour && (S.state.tour.route || S.state.tour.stops)) || [];
+    DB.set("state", "tour", only === true ? {stops:startSel.slice(), route:keep, single:true, active:true, by:me(), at:Date.now()} : {stops:startSel.slice(), route:startSel.slice(), single:false, active:true, by:me(), at:Date.now()});
     const sup = startSel.filter(s => s[0] === "s").map(s => s.slice(2)); if (sup.length) setTrip(sup);
     closeModal(); watchSeen = null; setShop(true); window.scrollTo(0, 0); toast("Tik om af te vinken, veeg opzij voor meer opties");
   },
