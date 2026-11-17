@@ -117,7 +117,7 @@ html,body{overscroll-behavior-x:none}
 html,body{overflow-x:clip}
 .peek{position:fixed;top:50%;z-index:0;display:flex;flex-direction:column;align-items:center;gap:8px;max-width:38vw;text-align:center;font-size:15px;font-weight:600;color:var(--mute);opacity:0;pointer-events:none;transform:translate3d(0,-50%,0);will-change:transform,opacity;transition:color .15s}
 .peek>span:last-of-type{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
-.peek.r{right:14px}.peek.l{left:14px}
+.peek.r{right:0}.peek.l{left:0}
 .peek svg{width:20px;height:20px;flex:none}
 #pgList{position:relative;z-index:1}
 .peek.ready{color:var(--acc)}
@@ -742,7 +742,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "49";
+const APP_V = "50";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -1768,13 +1768,14 @@ function switchList(k, dir){
     const name = st ? st.name : x ? x.name : "Boodschappen";
     return (st ? logoHtml(st.name, st.logo, 40) : "<span class='lg lgnone' style='width:40px;height:40px'>" + ico("list") + "</span>") + "<span>" + esc(name) + "</span>";
   };
-  const peek = (k, side, p) => {
+  // Midden in de vrije ruimte tussen de rand van de lijst (x) en de rand van het scherm.
+  const peek = (k, side, p, x) => {
     if (!pk) { pk = document.createElement("div"); pk.className = "peek"; document.body.appendChild(pk); }
     if (!k) { pk.style.opacity = "0"; return; }
     if (k !== pkKey || side !== pkSide) { pk.innerHTML = peekHtml(k) + ico(side < 0 ? "chevL" : "chevR"); pkKey = k; pkSide = side; pk.classList.toggle("l", side < 0); pk.classList.toggle("r", side > 0); }
-    const w = pk.offsetWidth + 24;
+    const L = m(), gap = Math.abs(x) + (side > 0 ? innerWidth - L.offsetLeft - L.offsetWidth : L.offsetLeft), w = pk.offsetWidth, c = gap / 2 - w / 2;
     pk.style.transition = "none";
-    pk.style.transform = "translate3d(" + (side > 0 ? 1 : -1) * (1 - p) * w + "px,-50%,0)";
+    pk.style.transform = "translate3d(" + (side > 0 ? -c : c) + "px,-50%,0)";
     pk.style.opacity = String(Math.min(1, p * 1.6));
     pk.classList.toggle("ready", p >= 1);
   };
@@ -1783,7 +1784,7 @@ function switchList(k, dir){
     raf = 0; const [ls, i] = lists(), edge = (dx > 0 && i <= 0) || (dx < 0 && i >= ls.length - 1);
     const x = edge ? dx / (1 + Math.abs(dx) / 60) : dx;
     m().style.transform = "translate3d(" + x + "px,0,0)"; m().style.opacity = edge ? "" : String(1 - Math.min(.35, Math.abs(dx) / 900));
-    if (edge || !dx) peek(null); else peek(ls[i + (dx < 0 ? 1 : -1)], dx < 0 ? 1 : -1, Math.min(1, Math.abs(dx) / (innerWidth * .25)));
+    if (edge || !dx) peek(null); else peek(ls[i + (dx < 0 ? 1 : -1)], dx < 0 ? 1 : -1, Math.min(1, Math.abs(dx) / (innerWidth * .25)), x);
   };
   const anim = (el, tf, op, ms) => new Promise(res => {
     el.style.transition = "transform " + ms + "ms cubic-bezier(.2,.7,.2,1),opacity " + ms + "ms ease-out";
