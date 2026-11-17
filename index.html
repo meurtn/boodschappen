@@ -175,6 +175,16 @@ body:not(.shop) .row .rin .rmain{padding-left:14px}
 .cartnote{display:flex;align-items:center;gap:4px;background:var(--soft);border-radius:12px;padding:6px 6px 6px 14px;margin:6px 0 4px;font-size:14px;color:var(--acc)}
 .cartnote .tb{padding:8px}
 .modal{position:fixed;inset:0;z-index:35;background:rgba(10,15,22,.38);display:flex;align-items:flex-end;justify-content:center;padding:12px 12px calc(12px + env(safe-area-inset-bottom));animation:fade .18s}
+.modal{-webkit-backdrop-filter:blur(8px) saturate(.9);backdrop-filter:blur(8px) saturate(.9);background:rgba(10,15,22,.28)}
+.modal.center{align-items:center;padding:calc(16px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom))}
+.mcard.sheet{max-height:100%;display:flex;flex-direction:column;padding:0;overflow:hidden}
+.shh{display:flex;align-items:center;gap:10px;padding:16px 14px 10px 20px;border-bottom:1px solid var(--line)}
+.shh h2{flex:1;margin:0;font-size:20px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shb{overflow:auto;padding:16px 16px 6px;-webkit-overflow-scrolling:touch}
+.shb .hero{margin-top:0}
+/* Lijstmenu: achtergrond vervaagt */
+#popHost:not(:empty)::before{content:"";position:fixed;inset:0;z-index:24;background:rgba(10,15,22,.14);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);animation:fade .18s}
+#popHost:has(.pop.out)::before{animation:fadeout .14s forwards}
 .modal.out{animation:fadeout .16s forwards}
 @keyframes fade{from{opacity:0}}
 @keyframes fadeout{to{opacity:0}}
@@ -312,7 +322,9 @@ body:has(.sorting){user-select:none;-webkit-user-select:none}
 .onlyone small{font-size:13px;opacity:.85;font-weight:400}
 .orline{display:flex;align-items:center;gap:10px;color:var(--mute);font-size:13px;margin:12px 2px 10px}.orline:before,.orline:after{content:"";flex:1;height:1px;background:var(--line)}
 .mlead{color:var(--mute);font-size:14px;margin:-6px 2px 12px}
-.mcard.start{max-height:86vh;overflow:auto}
+.mcard.start{height:100%;max-height:100%;overflow:auto;display:flex;flex-direction:column}
+.mcard.start .slist{flex:0 0 auto}
+.mcard.start>.line:last-child{margin-top:auto!important;padding-top:16px}
 .slist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden}
 .scand{display:flex;align-items:center;gap:12px;min-height:58px;padding:8px 14px;border-bottom:1px solid var(--line);text-align:left;transition:background-color .15s}
 .scand:last-child{border-bottom:0}
@@ -719,7 +731,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "44";
+const APP_V = "45";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -765,6 +777,7 @@ function go(name, arg){
   if (PARENT[name]) { navDir = "fwd"; depth++; setHash(name); } else { navDir = "tab"; depth = 0; setHash(name, true); }
 }
 function back(){
+  if (psheet) return closeCard();
   navDir = "back";
   if (depth > 0) { depth--; history.back(); } else setHash(PARENT[route] || "lijst", true);
 }
@@ -1046,7 +1059,7 @@ function openStart(mode){
   startMode = mode || "new";
   const t = S.state.tour || {}, c = startCands(), keys = c.map(x => x.key), prev = ((startMode === "edit" ? t.stops : t.route || t.stops) || []).filter(k => keys.includes(k));
   startSel = prev.length ? prev.slice() : c.filter(x => x.n).length === 1 ? [c.find(x => x.n).key] : [];
-  $("modalHost").innerHTML = "<div class='modal' data-a='modalbg'><div class='mcard start' role='dialog' aria-label='Waar ga je winkelen'></div></div>";
+  $("modalHost").innerHTML = "<div class='modal center' data-a='modalbg'><div class='mcard start' role='dialog' aria-label='Waar ga je winkelen'></div></div>";
   drawStart();
 }
 const curKey = () => { const c = curList(); return c === "boodschappen" ? null : c.startsWith("s:") ? c : "x:" + c; };
@@ -1396,6 +1409,7 @@ function render(force){
   document.documentElement.style.setProperty("--toph", $("top").offsetHeight + "px");
   const root = rootOf(route); [...$("tabs").children].forEach((b, i) => b.classList.toggle("on", TABS[i][0] === root));
   renderSug();
+  if (psheet) drawCard();
 }
 function setShop(on, quiet){
   if (on) setWatch(false, true);
@@ -1492,7 +1506,8 @@ const ACT = {
     DB.del("xlists", k); items.forEach(([id]) => DB.del("xitems", id)); render(true);
     toast("Lijst " + old.name + " verwijderd", "Ongedaan maken", () => { DB.set("xlists", k, old); items.forEach(([id, v]) => DB.set("xitems", id, v)); });
   },
-  rowtap:k => { const it = S.items[k]; if (!it) return; if (document.body.classList.contains("shop")) ACT.toggle(k); else go("product", k); },
+  rowtap:k => { const it = S.items[k]; if (!it) return; if (document.body.classList.contains("shop")) ACT.toggle(k); else openCard("product", k); },
+  sheetclose:() => closeCard(),
   plus:k => step(k, 1), minus:k => step(k, -1),
   del:k => { back(); removeItem(k); },
   forget:k => { back(); DB.del("items", k); DB.del("products", k); toast("Product vergeten"); },
@@ -1684,7 +1699,7 @@ $("logoFile").addEventListener("change", e => {
   img.onerror = () => { URL.revokeObjectURL(url); toast("Dit bestand kan ik niet als plaatje lezen"); };
   img.src = url;
 });
-addEventListener("hashchange", () => { closePop(); closeModal(); onRoute(); });
+addEventListener("hashchange", () => { closePop(); psheet = null; closeModal(); onRoute(); });
 
 /* ---------- afronden ---------- */
 function roundStats(){
@@ -1710,7 +1725,30 @@ function finish(){
     (r.rest.length ? line(r.rest.length, "nog niet gepakt", "blijven op de lijst") : "") +
     "<div class='line' style='margin-top:18px'><button class='btn sec grow' data-a='modalclose'>Verder winkelen</button><button class='btn grow' data-a='finishok'>Afronden</button></div></div></div>";
 }
-function closeModal(){ const m = $("modalHost").firstChild; if (!m) return; m.classList.add("out"); setTimeout(() => { if ($("modalHost").firstChild === m) $("modalHost").innerHTML = ""; }, 160); }
+// Productkaart: dezelfde inhoud als de productpagina, maar als kaart boven de lijst.
+let psheet = null;
+function openCard(name, k){
+  args[name] = k; psheet = name; closePop(true);
+  $("modalHost").innerHTML = "<div class='modal center' data-a='modalbg'><div class='mcard sheet' role='dialog'></div></div>";
+  drawCard(true);
+  try { history.pushState({sheet:1}, ""); } catch {}
+}
+function drawCard(force){
+  const c = document.querySelector(".mcard.sheet"); if (!c || !psheet) return;
+  const P = PAGES[psheet](); if (!P.html) return closeCard();
+  const ae = document.activeElement;
+  if (!force && ae && ae.tagName === "INPUT" && c.contains(ae)) { const h = c.querySelector(".shh h2"); if (h) h.textContent = P.title; return; }
+  const b = c.querySelector(".shb"), top = b ? b.scrollTop : 0;
+  c.innerHTML = "<div class='shh'><h2>" + esc(P.title) + "</h2><button class='ib' data-a='sheetclose' aria-label='Sluiten'>" + ico("x") + "</button></div><div class='shb'>" + P.html + "</div>";
+  c.querySelector(".shb").scrollTop = top;
+}
+function closeCard(fromPop){
+  if (!psheet) return;
+  psheet = null; closeModal();
+  if (!fromPop) try { history.back(); } catch {}
+}
+addEventListener("popstate", () => { if (psheet) closeCard(true); });
+function closeModal(){ if (psheet) return closeCard(); const m = $("modalHost").firstChild; if (!m) return; m.classList.add("out"); setTimeout(() => { if ($("modalHost").firstChild === m) $("modalHost").innerHTML = ""; }, 160); }
 function finishNow(silent){
   const r = roundStats();
   if (r.l === "tour") {
