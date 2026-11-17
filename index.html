@@ -115,6 +115,12 @@ h1,h2,h3,p{margin:0}
 html,body{overscroll-behavior-x:none}
 #main.tab,#pgList.swap{animation:tab .2s ease-out}
 html,body{overflow-x:clip}
+.peek{position:fixed;top:50%;z-index:20;display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 30px rgba(20,35,60,.16);font-size:16px;font-weight:600;color:var(--text);opacity:0;pointer-events:none;transform:translate3d(0,-50%,0);will-change:transform,opacity;max-width:62vw;transition:background .15s,border-color .15s}
+.peek>span:last-of-type{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.peek.r{right:12px}.peek.l{left:12px}
+.peek svg{width:18px;height:18px;color:var(--mute);flex:none}
+.peek.ready{border-color:var(--acc);background:color-mix(in srgb,var(--acc) 8%,var(--surface))}
+.peek.ready svg{color:var(--acc)}
 .pop.mid{min-width:min(300px,calc(100vw - 48px));max-height:70vh;padding:8px;border-radius:18px;animation:popmid .18s var(--ease)}
 .pop.mid.out{animation:popout .14s ease-in forwards}
 @keyframes popmid{from{opacity:0;transform:scale(.94)}}
@@ -736,7 +742,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "47";
+const APP_V = "48";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -1755,10 +1761,29 @@ function switchList(k, dir){
   const ok = e => !busy && route === "lijst" && !document.body.classList.contains("shop") && !document.body.classList.contains("watch") && !$("modalHost").firstChild && !popOpen() && !psheet &&
     !e.target.closest("input,select,textarea,.hscroll,#tabs,#top,#toastHost,#popHost,#modalHost") && !((c => c && c.scrollWidth > c.clientWidth + 2)(e.target.closest(".chips")));
   const lists = () => { const ls = allLists().map(l => l[0]); return [ls, ls.indexOf(curList())]; };
+  // Voorproefje: naam en logo van de lijst waar je naartoe veegt, schuift van opzij binnen.
+  let pk = null, pkKey = null, pkSide = 0;
+  const peekHtml = k => {
+    const st = k.startsWith("s:") && storeList().find(s => "s:" + s.id === k), x = !k.startsWith("s:") && S.xlists[k];
+    const name = st ? st.name : x ? x.name : "Boodschappen";
+    return (st ? logoHtml(st.name, st.logo, 30) : "<span class='lg lgnone' style='width:30px;height:30px'>" + ico("list") + "</span>") + "<span>" + esc(name) + "</span>";
+  };
+  const peek = (k, side, p) => {
+    if (!pk) { pk = document.createElement("div"); pk.className = "peek"; document.body.appendChild(pk); }
+    if (!k) { pk.style.opacity = "0"; return; }
+    if (k !== pkKey || side !== pkSide) { pk.innerHTML = (side < 0 ? "" : ico("chevL")) + peekHtml(k) + (side < 0 ? ico("chevR") : ""); pkKey = k; pkSide = side; pk.classList.toggle("l", side < 0); pk.classList.toggle("r", side > 0); }
+    const w = pk.offsetWidth + 24;
+    pk.style.transition = "none";
+    pk.style.transform = "translate3d(" + (side > 0 ? 1 : -1) * (1 - p) * w + "px,-50%,0)";
+    pk.style.opacity = String(Math.min(1, p * 1.6));
+    pk.classList.toggle("ready", p >= 1);
+  };
+  const peekHide = () => { if (!pk) return; pk.style.transition = "opacity .18s, transform .22s cubic-bezier(.2,.7,.2,1)"; pk.style.opacity = "0"; pk.classList.remove("ready"); pkKey = null; };
   const paint = () => {
     raf = 0; const [ls, i] = lists(), edge = (dx > 0 && i <= 0) || (dx < 0 && i >= ls.length - 1);
     const x = edge ? dx / (1 + Math.abs(dx) / 60) : dx;
     m().style.transform = "translate3d(" + x + "px,0,0)"; m().style.opacity = edge ? "" : String(1 - Math.min(.35, Math.abs(dx) / 900));
+    if (edge || !dx) peek(null); else peek(ls[i + (dx < 0 ? 1 : -1)], dx < 0 ? 1 : -1, Math.min(1, Math.abs(dx) / (innerWidth * .25)));
   };
   const anim = (el, tf, op, ms) => new Promise(res => {
     el.style.transition = "transform " + ms + "ms cubic-bezier(.2,.7,.2,1),opacity " + ms + "ms ease-out";
@@ -1778,6 +1803,7 @@ function switchList(k, dir){
     if (!on) return; on = false;
     if (lock !== "x") return;
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    peekHide();
     const el = m(), [ls, i] = lists(), W = innerWidth, fast = Math.abs(dx) > 40 && Date.now() - t0 < 300;
     const n = (Math.abs(dx) > W * .25 || fast) ? i + (dx < 0 ? 1 : -1) : i;
     swallowUntil = Date.now() + 350;
