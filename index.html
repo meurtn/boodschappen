@@ -112,7 +112,13 @@ h1,h2,h3,p{margin:0}
 /* pagina-overgangen */
 #main.fwd{animation:fwd .26s var(--ease)}
 #main.back{animation:bck .26s var(--ease)}
+html,body{overscroll-behavior-x:none}
 #main.tab,#pgList.swap{animation:tab .2s ease-out}
+#pgList.inr{animation:inr .24s var(--ease)}#pgList.inl{animation:inl .24s var(--ease)}
+@keyframes inr{from{transform:translateX(40px);opacity:0}}@keyframes inl{from{transform:translateX(-40px);opacity:0}}
+.pop.mid{min-width:min(300px,calc(100vw - 48px));max-height:70vh;padding:8px;border-radius:18px;animation:popmid .18s var(--ease)}
+.pop.mid.out{animation:popout .14s ease-in forwards}
+@keyframes popmid{from{opacity:0;transform:scale(.94)}}
 @keyframes fwd{from{opacity:0;transform:translateX(20px)}}
 @keyframes bck{from{opacity:0;transform:translateX(-20px)}}
 @keyframes tab{from{opacity:0;transform:translateY(5px)}}
@@ -731,7 +737,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "45";
+const APP_V = "46";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -977,7 +983,16 @@ function openMenu(btn, html){
   p.style.transformOrigin = below ? "top right" : "bottom right";
   popAnchor = btn; btn.classList.add("on"); btn.setAttribute("aria-expanded", "true");
 }
-function openPop(){ const btn = document.querySelector("#barIn [data-a=lists]"); if (btn) openMenu(btn, popHtml()); }
+// Lijstmenu in het midden van het scherm, niet aan de knop vast.
+function openPop(){
+  const btn = document.querySelector("#barIn [data-a=lists]"); if (!btn) return;
+  openMenu(btn, popHtml());
+  const p = $("popHost").firstChild; if (!p) return;
+  p.classList.add("mid");
+  p.style.right = "auto"; p.style.transformOrigin = "center";
+  p.style.left = Math.round((innerWidth - p.offsetWidth) / 2) + "px";
+  p.style.top = Math.max(16, Math.round((innerHeight - p.offsetHeight) / 2)) + "px";
+}
 function closePop(now){
   const host = $("popHost"), p = host.firstChild;
   if (popAnchor) { popAnchor.classList.remove("on"); popAnchor.setAttribute("aria-expanded", "false"); popAnchor = null; }
@@ -1493,7 +1508,7 @@ const ACT = {
     if (s && !tripStores().some(x => x.id === s)) toast(nm + " staat niet in je route van vandaag", "Route aanpassen", () => go("winkels"));
   },
   newlist:() => { closePop(); go("lijsten"); setTimeout(() => { const i = $("lName"); if (i) i.focus(); }, 300); },
-  setlist:k => { closePop(); if (k === curList()) return; watchSeen = null; pref.set("list", k); $("q").value = ""; setShop(false, true); render(true); window.scrollTo(0, 0); const m = $("pgList"); m.classList.remove("swap"); void m.offsetWidth; m.classList.add("swap"); },
+  setlist:k => switchList(k),
   ladd:() => {
     const inp = $("lName"), name = inp.value.trim(); if (!name) return inp.focus();
     const id = keyOf(name); if (!id || id === "boodschappen") return inp.focus();
@@ -1726,6 +1741,35 @@ function finish(){
     "<div class='line' style='margin-top:18px'><button class='btn sec grow' data-a='modalclose'>Verder winkelen</button><button class='btn grow' data-a='finishok'>Afronden</button></div></div></div>";
 }
 // Productkaart: dezelfde inhoud als de productpagina, maar als kaart boven de lijst.
+function switchList(k, dir){
+  closePop(); if (k === curList()) return;
+  watchSeen = null; pref.set("list", k); $("q").value = ""; setShop(false, true); render(true); window.scrollTo(0, 0);
+  const m = $("pgList"); m.style.transform = ""; m.style.opacity = ""; m.classList.remove("swap", "inl", "inr"); void m.offsetWidth; m.classList.add(dir ? (dir > 0 ? "inr" : "inl") : "swap");
+}
+// Vegen naar links of rechts in een gewone lijst: naar de volgende of vorige lijst. Niet tijdens winkelen of meekijken.
+(() => {
+  let x0 = 0, y0 = 0, t0 = 0, lock = null, on = false;
+  const ok = e => route === "lijst" && !document.body.classList.contains("shop") && !document.body.classList.contains("watch") && !$("modalHost").firstChild && !popOpen() && !psheet && !e.target.closest("input,select,textarea,.hscroll,#tabs,#top,#toastHost,#popHost,#modalHost") && !((c => c && c.scrollWidth > c.clientWidth + 2)(e.target.closest(".chips")));
+  document.addEventListener("touchstart", e => { on = e.touches.length === 1 && ok(e); if (!on) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); lock = null; }, {passive:true});
+  document.addEventListener("touchmove", e => {
+    if (!on) return;
+    const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+    if (lock === null && (Math.abs(dx) > 10 || Math.abs(dy) > 10)) lock = Math.abs(dx) > Math.abs(dy) * 1.4 ? "x" : "y";
+    if (lock !== "x") return;
+    const ls = allLists().map(l => l[0]), i = ls.indexOf(curList()), edge = (dx > 0 && i <= 0) || (dx < 0 && i >= ls.length - 1);
+    const m = $("pgList"); m.style.transition = "none"; m.style.transform = "translateX(" + (dx * (edge ? .15 : .45)) + "px)"; m.style.opacity = edge ? "" : String(1 - Math.min(.5, Math.abs(dx) / 600));
+  }, {passive:true});
+  document.addEventListener("touchend", e => {
+    if (!on) return; on = false;
+    const m = $("pgList"), dx = e.changedTouches[0].clientX - x0;
+    if (lock !== "x") return;
+    const ls = allLists().map(l => l[0]), i = ls.indexOf(curList()), fast = Math.abs(dx) > 40 && Date.now() - t0 < 300;
+    const n = (Math.abs(dx) > 80 || fast) ? i + (dx < 0 ? 1 : -1) : i;
+    m.style.transition = "";
+    if (n !== i && n >= 0 && n < ls.length) { swallowUntil = Date.now() + 350; switchList(ls[n], dx < 0 ? 1 : -1); }
+    else { m.style.transition = "transform .22s var(--ease),opacity .22s"; m.style.transform = ""; m.style.opacity = ""; setTimeout(() => { m.style.transition = ""; }, 240); }
+  }, {passive:true});
+})();
 let psheet = null;
 function openCard(name, k){
   args[name] = k; psheet = name; closePop(true);
