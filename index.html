@@ -117,6 +117,9 @@ html,body{overflow-x:clip}
 /* Inzicht */
 .itiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 6px}
 .itile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 10px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.itile{text-align:left;font:inherit;cursor:pointer;transition:transform .12s}.itile:active{transform:scale(.97);background:var(--fill)}
+svg.bars{width:100%;height:auto;margin:4px 0 8px}svg.bars rect{fill:color-mix(in srgb,var(--acc) 45%,transparent)}svg.bars rect.hi{fill:var(--acc)}
+svg.bars text{font-size:10px;fill:var(--faint)}svg.bars text.v{fill:var(--mute);font-size:10.5px}svg.bars line.avg{stroke:var(--acc);stroke-width:1;stroke-dasharray:4 4;opacity:.6}
 .itile b{font-size:19px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .itile span{font-size:12px;color:var(--mute);line-height:1.25}
 .prow{display:flex;align-items:center;gap:12px;padding:11px 12px 11px 14px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -126,7 +129,7 @@ html,body{overflow-x:clip}
 .pbar{height:4px;border-radius:2px;background:var(--fill);margin:7px 0 6px;overflow:hidden}.pbar i{display:block;height:100%;border-radius:2px;background:color-mix(in srgb,var(--acc) 55%,transparent)}
 .pbar i.now{background:var(--acc)}.pbar i.late{background:#ea580c}
 .ps{font-size:12.5px;color:var(--mute)}
-.prow .pa{flex:none;color:var(--acc)}.pon{flex:none;width:40px;display:grid;place-items:center;color:var(--acc)}.pon svg{width:18px;height:18px}
+.prow .pa{flex:none;color:var(--acc)}.pon{flex:none;color:var(--acc)}.pon svg{width:18px;height:18px}
 .prow.top .pbar{margin-bottom:2px}.rk{width:18px;font-size:13px;color:var(--faint);text-align:right;flex:none}
 .ihero{text-align:center;padding:6px 0 4px}.ihero .lbl{display:block;font-size:13px;color:var(--mute)}.ihero b{display:block;font-size:24px;font-weight:600;margin:4px 0;color:var(--text)}.ihero .sub{font-size:13px;color:var(--mute)}
 svg.tl{width:100%;height:auto;margin:6px 0 14px;overflow:visible}svg.tl line{stroke:var(--line);stroke-width:2;stroke-linecap:round}svg.tl line.tk{stroke-width:1.5}
@@ -723,7 +726,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "53";
+const APP_V = "54";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -1412,7 +1415,8 @@ function toast(msg, act, fn){
   document.body.classList.add("toasting");
   toastTimer = setTimeout(toastHide, act ? 5000 : 2400);
 }
-document.addEventListener("pointerdown", e => { if ($("toastHost").firstChild && !e.target.closest(".toast button")) setTimeout(toastHide, 0); }, true);
+// Tikken elders verbergt alleen de melding die er op dat moment stond, niet een nieuwe die door deze tik ontstaat.
+document.addEventListener("pointerdown", e => { const t = $("toastHost").firstChild; if (t && !e.target.closest(".toast button")) setTimeout(() => { if ($("toastHost").firstChild === t) toastHide(); }, 0); }, true);
 
 /* ---------- gebeurtenissen ---------- */
 const packName = (kind, p) => kind === "templates" ? p.name : "Lijst van " + dateStr(p.at);
@@ -1506,8 +1510,18 @@ const ACT = {
   pick:k => pick(+k),
   dueadd:k => { const p = product(k); if (p) addItem(p.name); },
   snooze:k => { const p = product(k); if (!p) return; const r = predict(k); DB.set("products", k, {name:p.name, cat:p.cat, snooze:Date.now() + Math.max(1, r && r.days ? r.days / 2 : 2) * DAY}); },
-  iadd:k => { const p = product(k); if (!p || onList(k)) return; addItem(p.name); render(true); },
-  iaddall:() => { const ks = soonList(1).filter(r => !onList(r.k)).map(r => r.k); ks.forEach(k => addItem(product(k).name, undefined, {}, true)); render(true); toast(nProd(ks.length) + " op de lijsten gezet"); },
+  // Toevoegen vanuit Inzicht, met ongedaan maken; nog een tik op het vinkje haalt het weer van de lijst.
+  iadd:k => {
+    const p = product(k); if (!p) return;
+    if (onList(k)) { const old = S.items[k]; DB.del("items", k); render(true); return toast(p.name + " van de lijst gehaald", "Ongedaan maken", () => { DB.set("items", k, old); render(true); }); }
+    addItem(p.name, undefined, {}, true); render(true);
+    const it = S.items[k]; toast(p.name + " staat op de lijst " + listName(it && listOf(k, it) ? "s:" + listOf(k, it) : "boodschappen"), "Ongedaan maken", () => { DB.del("items", k); render(true); });
+  },
+  iaddall:() => {
+    const ks = soonList(1).filter(r => !onList(r.k)).map(r => r.k); ks.forEach(k => addItem(product(k).name, undefined, {}, true)); render(true);
+    toast(nProd(ks.length) + " op de lijsten gezet", "Ongedaan maken", () => { ks.forEach(k => DB.del("items", k)); render(true); });
+  },
+  istat:k => openCard("istat", k),
   pinzicht:k => openCard("prodinzicht", k),
   iper:k => { args.iper = k; render(true); },
   shop:() => {
@@ -2005,7 +2019,7 @@ function predict(k){
 }
 const confTxt = c => c >= .6 ? "betrouwbaar" : c >= .35 ? "redelijk zeker" : "eerste schatting";
 const daysTxt = d => { d = Math.round(d); return d <= 0 ? "vandaag" : d === 1 ? "morgen" : "over " + d + " dagen"; };
-const leftTxt = r => r.left <= -1 ? Math.round(-r.left) + (Math.round(-r.left) === 1 ? " dag" : " dagen") + " over tijd" : r.left < .5 ? "nu nodig" : daysTxt(r.left);
+const leftTxt = r => r.left < .5 ? "nu nodig" : daysTxt(r.left);
 const agoTxt = d => { d = Math.floor(d); return d <= 0 ? "vandaag" : d === 1 ? "gisteren" : d + " dagen geleden"; };
 const everyTxt = d => d < 1.5 ? "elke dag" : d >= 6.5 && d < 7.5 ? "elke week" : d >= 13 && d < 15 ? "om de 2 weken" : d >= 28 ? "om de " + Math.round(d / 7) + " weken" : "om de " + Math.round(d) + " dagen";
 const qtyTxt = (q, u) => !q ? "" : u === "g" ? (q >= 1000 ? fmt(q / 1000) + " kg" : Math.round(q) + " g") : u === "ml" ? (q >= 1000 ? fmt(q / 1000) + " l" : Math.round(q) + " ml") : (n => n + (n === 1 ? " stuk" : " stuks"))(Math.max(1, Math.round(q)));
@@ -2027,14 +2041,14 @@ PAGES.inzicht = () => {
   const W8 = now - 56 * DAY, days8 = shopDays(all, W8), buys8 = all.reduce((a, r) => a + r.log.filter(e => e.t >= W8).length, 0);
   const counts = all.map(r => { const es = r.log.filter(e => e.t >= from); return {r, n:es.length, q:es.filter(e => e.u === r.unit).reduce((a, e) => a + (e.q || 0), 0)}; }).filter(x => x.n).sort((a, b) => b.n - a.n || b.q - a.q);
   const top = counts[0], soon = all.filter(r => r.n >= 2 && r.days && r.left <= 7 && !(S.products[r.k].snooze > now)).sort((a, b) => a.left - b.left);
-  const tile = (v, l) => "<div class='itile'><b>" + v + "</b><span>" + l + "</span></div>";
-  let h = "<div class='itiles'>" + tile(days8.size ? fmt(Math.round(days8.size / 8 * 10) / 10) : "0", "keer winkelen per week") + tile(days8.size ? Math.round(buys8 / days8.size) : "0", "producten per keer") + tile(esc(top ? product(top.r.k).name : "-"), "het vaakst gekocht") + "</div>";
+  const tile = (v, l, k) => "<button class='itile' data-a='istat' data-k='" + k + "'><b>" + v + "</b><span>" + l + "</span></button>";
+  let h = "<div class='itiles'>" + tile(days8.size ? fmt(Math.round(days8.size / 8 * 10) / 10) : "0", "keer winkelen per week", "week") + tile(days8.size ? Math.round(buys8 / days8.size) : "0", "producten per keer", "keer") + tile(esc(top ? product(top.r.k).name : "-"), "het vaakst gekocht", "top") + "</div>";
   const row = r => {
-    const p = product(r.k), on = onList(r.k), pct = Math.max(4, Math.min(100, r.since / r.days * 100)), late = r.left <= -1, nw = r.left < .5, c = late ? "late" : nw ? "now" : "";
+    const p = product(r.k), on = onList(r.k), pct = Math.max(4, Math.min(100, r.since / r.days * 100)), c = r.left < .5 ? "now" : "";
     return "<div class='prow' data-a='pinzicht' data-k='" + esc(r.k) + "'><div class='grow'><div class='pt'><span class='pn'>" + esc(p.name) + "</span><span class='pw " + c + "'>" + leftTxt(r) + "</span></div>" +
       "<div class='pbar'><i class='" + c + "' style='width:" + pct + "%'></i></div>" +
       "<div class='ps'>" + everyTxt(r.rhythm) + (r.avgQ ? ", meestal " + qtyTxt(r.avgQ, r.unit) : "") + " · laatst " + agoTxt(r.since) + (r.n < 3 ? " · eerste schatting" : "") + "</div></div>" +
-      (on ? "<span class='pon' aria-label='Staat op de lijst'>" + ico("check") + "</span>" : "<button class='ib pa' data-a='iadd' data-k='" + esc(r.k) + "' aria-label='" + esc(p.name) + " op de lijst zetten'>" + ico("plus") + "</button>") + "</div>";
+      (on ? "<button class='ib pon' data-a='iadd' data-k='" + esc(r.k) + "' aria-label='Staat op de lijst, tik om weg te halen'>" + ico("check") + "</button>" : "<button class='ib pa' data-a='iadd' data-k='" + esc(r.k) + "' aria-label='" + esc(p.name) + " op de lijst zetten'>" + ico("plus") + "</button>") + "</div>";
   };
   const nowL = soon.filter(r => r.left < .5), week = soon.filter(r => r.left >= .5), missing = nowL.filter(r => !onList(r.k) && r.n >= 3).length;
   h += "<h3 class='ch'>Nu nodig<span class='n'>" + (nowL.length || "") + "</span></h3>" + (nowL.length ? "<div class='group'>" + nowL.map(row).join("") + "</div>" : "<p class='hint'>Volgens jullie koopgedrag is er nu niets nodig.</p>");
@@ -2047,11 +2061,56 @@ PAGES.inzicht = () => {
   h += "<p class='hint' style='margin-top:14px'>Hoe vaker jullie afvinken, hoe beter de voorspellingen. Een product krijgt een eerste schatting na de tweede aankoop" + (one ? " (" + nProd(one) + " " + (one === 1 ? "is" : "zijn") + " nu 1 keer gekocht)" : "") + ". Koop je meer dan gewoonlijk, dan schuift de volgende keer evenredig op.</p>";
   return {title:"Inzicht", html:h};
 };
+// Uitleg bij de drie cijfers bovenaan Inzicht.
+function barSvg(vals, labels, opt){
+  opt = opt || {}; const n = vals.length, max = Math.max(1, ...vals), W = 300, H = 134, T = 16, bw = (W - 16) / n;
+  let s = "<svg class='bars' viewBox='0 0 " + W + " " + (H + 22) + "' aria-hidden='true'>";
+  if (opt.avg) { const y = T + (1 - opt.avg / max) * (H - T); s += "<line class='avg' x1='4' y1='" + y.toFixed(1) + "' x2='" + (W - 4) + "' y2='" + y.toFixed(1) + "'/>"; }
+  vals.forEach((v, i) => {
+    const h = v ? Math.max(3, v / max * (H - T)) : 0, x = 8 + i * bw + bw * .18, w = bw * .64;
+    s += "<rect class='" + (opt.hi === i ? "hi" : "") + "' x='" + x.toFixed(1) + "' y='" + (H - h).toFixed(1) + "' width='" + w.toFixed(1) + "' height='" + h.toFixed(1) + "' rx='3'/>";
+    if (v && n <= 14) s += "<text class='v' x='" + (x + w / 2).toFixed(1) + "' y='" + (H - h - 4).toFixed(1) + "' text-anchor='middle'>" + fmt(v) + "</text>";
+    if (labels[i]) s += "<text x='" + (x + w / 2).toFixed(1) + "' y='" + (H + 16) + "' text-anchor='middle'>" + labels[i] + "</text>";
+  });
+  return s + "</svg>";
+}
+PAGES.istat = () => {
+  const k = args.istat, now = Date.now(), all = predictAll(), day0 = new Date(); day0.setHours(0, 0, 0, 0);
+  const visits = {}; all.forEach(r => r.log.forEach(e => { const d = new Date(e.t); d.setHours(0, 0, 0, 0); (visits[+d] = visits[+d] || []).push(r.k); }));
+  const days = Object.keys(visits).map(Number).sort((a, b) => a - b), ds = t => new Date(t).toLocaleDateString("nl-NL", {day:"numeric", month:"short"});
+  const wd = ["zo", "ma", "di", "wo", "do", "vr", "za"];
+  if (k === "week") {
+    const wk = [], lab = []; for (let i = 7; i >= 0; i--) { const end = +day0 + DAY - i * 7 * DAY, st = end - 7 * DAY; wk.push(days.filter(t => t >= st && t < end).length); lab.push(i ? ds(st) : "nu"); }
+    const per = [0, 0, 0, 0, 0, 0, 0]; days.filter(t => t >= now - 56 * DAY).forEach(t => per[new Date(t).getDay()]++);
+    const ord = [1, 2, 3, 4, 5, 6, 0], best = ord.reduce((a, i) => per[i] > per[a] ? i : a, 1);
+    const tot = wk.reduce((a, x) => a + x, 0);
+    return {title:"Keer winkelen per week", html:"<p class='lead'>Elke dag waarop jullie iets afvinken, telt als een keer winkelen. De afgelopen 8 weken waren dat " + tot + " dagen, gemiddeld " + fmt(Math.round(tot / 8 * 10) / 10) + " per week.</p>" +
+      "<h3 class='ch'>Per week</h3>" + barSvg(wk, lab, {avg:tot / 8, hi:7}) +
+      "<h3 class='ch'>Op welke dag</h3>" + barSvg(ord.map(i => per[i]), ord.map(i => wd[i]), {hi:ord.indexOf(best)}) +
+      (per[best] ? "<p class='hint'>Jullie winkelen het vaakst op " + ["zondag", "maandag", "dinsdag", "woensdag", "donderdag", "vrijdag", "zaterdag"][best] + ".</p>" : "")};
+  }
+  if (k === "keer") {
+    const last = days.slice(-12), vals = last.map(t => visits[t].length), avg = vals.length ? vals.reduce((a, x) => a + x, 0) / vals.length : 0;
+    const big = last.reduce((a, t) => visits[t].length > (visits[a] || []).length ? t : a, last[0]);
+    return {title:"Producten per keer", html:"<p class='lead'>Per winkeldag geteld: hoeveel verschillende producten jullie hebben afgevinkt. Over de afgelopen 8 weken is dat gemiddeld " + Math.round(avg) + ".</p>" +
+      "<h3 class='ch'>De laatste " + last.length + " keer</h3>" + barSvg(vals, last.map(t => last.length > 8 ? new Date(t).getDate() + "" : ds(t)), {avg, hi:last.indexOf(big)}) +
+      (big ? "<p class='hint'>De grootste was " + dateStr(big) + " met " + nProd(visits[big].length) + ".</p>" : "")};
+  }
+  const per = args.iper || "90", from = per === "all" ? 0 : now - (+per) * DAY, perTxt = per === "all" ? "sinds het begin" : per === "30" ? "in de afgelopen 30 dagen" : "in de afgelopen 3 maanden";
+  const counts = all.map(r => ({r, n:r.log.filter(e => e.t >= from).length})).filter(x => x.n).sort((a, b) => b.n - a.n);
+  const top = counts[0]; if (!top) return {title:"Het vaakst gekocht", html:"<p class='hint'>Nog niets gekocht.</p>"};
+  const nm = product(top.r.k).name, wk = [], lab = [];
+  for (let i = 11; i >= 0; i--) { const end = +day0 + DAY - i * 7 * DAY, st = end - 7 * DAY; wk.push(top.r.log.filter(e => e.t >= st && e.t < end).length); lab.push(i % 3 ? "" : i ? ds(st) : "nu"); }
+  return {title:"Het vaakst gekocht", html:"<p class='lead'>" + esc(nm) + " is " + perTxt + " " + top.n + " keer gekocht. Elke dag dat het is afgevinkt, telt als een keer.</p>" +
+    "<h3 class='ch'>" + esc(nm) + " per week</h3>" + barSvg(wk, lab, {hi:11}) +
+    "<h3 class='ch'>Daarna</h3><div class='group'>" + counts.slice(1, 5).map(({r, n}) => "<div class='cell'><span class='grow'>" + esc(product(r.k).name) + "</span><span class='val'>" + n + " keer</span></div>").join("") + "</div>" +
+    "<button class='btn sec wide' data-a='pinzicht' data-k='" + esc(top.r.k) + "' style='margin-top:12px'>Alles over " + esc(nm) + "</button>"};
+};
 // Detail per product: tijdlijn van aankopen en de voorspelling.
 PAGES.prodinzicht = () => {
   const k = args.prodinzicht, p = product(k); if (!p) return {title:"", html:""};
   const r = predict(k), now = Date.now();
-  const add = onList(k) ? "<p class='hint' style='text-align:center'>Staat op de lijst " + esc(listName(listOf(k, S.items[k]) ? "s:" + listOf(k, S.items[k]) : "boodschappen")) + ".</p>" : "<button class='btn wide' data-a='iadd' data-k='" + esc(k) + "'>" + ico("plus") + "Op de lijst zetten</button>";
+  const add = onList(k) ? "<button class='btn sec wide' data-a='iadd' data-k='" + esc(k) + "'>" + ico("check") + "Staat op de lijst " + esc(listName(listOf(k, S.items[k]) ? "s:" + listOf(k, S.items[k]) : "boodschappen")) + ", weghalen</button>" : "<button class='btn wide' data-a='iadd' data-k='" + esc(k) + "'>" + ico("plus") + "Op de lijst zetten</button>";
   if (!r) return {title:p.name, html:"<p class='hint'>" + esc(p.name) + " is nog niet via de app gekocht. Vink het af tijdens het winkelen, dan houdt de app het koopgedrag bij.</p>" + add};
   const span = Math.max(60, Math.min(365, (now - r.log[0].t) / DAY + 7)), x = t => 8 + (1 - (now - t) / DAY / span) * 284;
   const maxQ = Math.max(...r.log.map(e => e.q || 1));
@@ -2061,7 +2120,7 @@ PAGES.prodinzicht = () => {
   svg += "<text x='8' y='58'>" + Math.round(span / 7) + " weken geleden</text><text x='292' y='58' text-anchor='end'>nu</text></svg>";
   const d = t => new Date(t).toLocaleDateString("nl-NL", {weekday:"short", day:"numeric", month:"short"});
   const cell = (l, v) => "<div class='cell'><span class='grow'>" + l + "</span><span class='val'>" + v + "</span></div>";
-  let h = "<div class='ihero'>" + (r.days ? "<span class='lbl'>Volgende keer waarschijnlijk</span><b>" + (r.left < .5 ? "Nu nodig" : d(r.next)) + "</b><span class='sub'>" + (r.left < .5 ? (r.left <= -1 ? leftTxt(r) + " · " : "") + confTxt(r.conf) : "tussen " + (r.next - r.spread * DAY <= now ? "nu" : d(r.next - r.spread * DAY)) + " en " + d(r.next + r.spread * DAY) + " · " + confTxt(r.conf)) + "</span>" : "<span class='lbl'>Nog geen voorspelling</span><b>1 keer gekocht</b><span class='sub'>Na de volgende aankoop schat de app wanneer het weer nodig is.</span>") + "</div>";
+  let h = "<div class='ihero'>" + (r.days ? "<span class='lbl'>Volgende keer waarschijnlijk</span><b>" + (r.left < .5 ? "Nu nodig" : d(r.next)) + "</b><span class='sub'>" + (r.left < .5 ? confTxt(r.conf) : "tussen " + (r.next - r.spread * DAY <= now ? "nu" : d(r.next - r.spread * DAY)) + " en " + d(r.next + r.spread * DAY) + " · " + confTxt(r.conf)) + "</span>" : "<span class='lbl'>Nog geen voorspelling</span><b>1 keer gekocht</b><span class='sub'>Na de volgende aankoop schat de app wanneer het weer nodig is.</span>") + "</div>";
   h += svg + "<div class='group'>" + cell("Gekocht", r.n + " keer") + (r.days ? cell("Gemiddeld", everyTxt(r.rhythm)) : "") + (r.avgQ && r.unit ? cell("Meestal per keer", qtyTxt(r.avgQ, r.unit)) : r.avgQ ? cell("Meestal per keer", qtyTxt(r.avgQ, "")) : "") + cell("Laatst", d(r.last) + ", " + agoTxt(r.since)) + "</div>" + add;
   return {title:p.name, html:h};
 };
