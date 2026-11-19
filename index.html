@@ -114,6 +114,24 @@ html,body{overscroll-behavior-x:none}
 html,body{overflow-x:clip}
 #pgList{position:relative}
 .ghost{position:absolute;pointer-events:none}
+/* Inzicht */
+.itiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 6px}
+.itile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 10px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.itile b{font-size:19px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.itile span{font-size:12px;color:var(--mute);line-height:1.25}
+.prow{display:flex;align-items:center;gap:12px;padding:11px 12px 11px 14px;border-bottom:1px solid var(--line);cursor:pointer}
+.prow:last-child{border-bottom:0}.prow:active{background:var(--fill)}
+.pt{display:flex;align-items:baseline;gap:8px}.pn{flex:1;font-size:16px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pw,.pc{font-size:13px;color:var(--mute);white-space:nowrap}.pw.now{color:var(--acc);font-weight:600}.pw.late{color:#c2410c;font-weight:600}
+.pbar{height:4px;border-radius:2px;background:var(--fill);margin:7px 0 6px;overflow:hidden}.pbar i{display:block;height:100%;border-radius:2px;background:color-mix(in srgb,var(--acc) 55%,transparent)}
+.pbar i.now{background:var(--acc)}.pbar i.late{background:#ea580c}
+.ps{font-size:12.5px;color:var(--mute)}
+.prow .pa{flex:none;color:var(--acc)}.pon{flex:none;width:40px;display:grid;place-items:center;color:var(--acc)}.pon svg{width:18px;height:18px}
+.prow.top .pbar{margin-bottom:2px}.rk{width:18px;font-size:13px;color:var(--faint);text-align:right;flex:none}
+.ihero{text-align:center;padding:6px 0 4px}.ihero .lbl{display:block;font-size:13px;color:var(--mute)}.ihero b{display:block;font-size:24px;font-weight:600;margin:4px 0;color:var(--text)}.ihero .sub{font-size:13px;color:var(--mute)}
+svg.tl{width:100%;height:auto;margin:6px 0 14px;overflow:visible}svg.tl line{stroke:var(--line);stroke-width:2;stroke-linecap:round}svg.tl line.tk{stroke-width:1.5}
+svg.tl circle{fill:color-mix(in srgb,var(--acc) 70%,transparent)}svg.tl text{font-size:10px;fill:var(--faint)}
+.cell .val{color:var(--mute);font-size:15px}
 #barIn .grow{position:relative}
 .tghost{position:absolute;left:0;top:0;margin:0;pointer-events:none;white-space:nowrap}
 .pop.mid{min-width:min(300px,calc(100vw - 48px));max-height:70vh;padding:8px;border-radius:18px;animation:popmid .18s var(--ease)}
@@ -548,17 +566,6 @@ const allProducts = () => { const ks = new Set([...Object.keys(CATALOG), ...Obje
 const onList = k => S.items[k] && !S.items[k].checked;
 function guessCat(name){ const k = " " + keyOf(name) + " "; for (const [c, words] of Object.entries(GUESS)) if (words.some(w => k.includes(w))) return c; return "overig"; }
 function storeList(){ const o = {standaard:{name:"Standaard"}, ...S.stores}; return Object.entries(o).map(([id, s]) => ({id, name:s.name || id, order:s.order, logo:s.logo || "", plain:!!s.plain})).sort((a, b) => a.name.localeCompare(b.name, "nl", {sensitivity:"base"})); }
-// Koopritme: mediaan van de tussenpozen tussen de laatste aankopen.
-function rhythm(p){
-  const b = p.buys; if (!b || b.length < 3) return null;
-  const g = []; for (let i = 1; i < b.length; i++) g.push(b[i] - b[i - 1]); g.sort((x, y) => x - y);
-  const days = Math.max(2, Math.round(g[Math.floor(g.length / 2)] / DAY)), since = (Date.now() - b[b.length - 1]) / DAY;
-  return {days, since, due:since >= days * 0.85};
-}
-function dueList(){
-  return allProducts().filter(p => { if (S.items[p.k] || p.snooze > Date.now()) return false; const r = rhythm(p); if (r && r.due) { p.r = r; return true; } return false; })
-    .sort((a, b) => b.r.since / b.r.days - a.r.since / a.r.days).slice(0, 6);
-}
 const slim = v => ({name:v.name, qty:v.qty || 1, unit:v.unit || "", cat:v.cat, note:v.note || "", store:v.store || ""});
 const dateStr = at => new Date(at).toLocaleDateString("nl-NL", {weekday:"long", day:"numeric", month:"long"});
 function order(st){ const o = ((st || {}).order || DEFAULT_ORDER).filter(c => CAT[c]); for (const c of DEFAULT_ORDER) if (!o.includes(c)) o.push(c); return o; }
@@ -575,9 +582,7 @@ const Local = {
     }
     if (!pref.get("seeded2", "")) {
       const now = Date.now(), P = (n, d) => { const k = keyOf(n); S.products[k] = {name:n, cat:CATALOG[k].cat, ...(S.products[k] || {}), ...d}; };
-      P("Eieren", {buys:[now - 22 * DAY, now - 15 * DAY, now - 8 * DAY], n:3, staple:true});
-      P("Yoghurt", {buys:[now - 16 * DAY, now - 11 * DAY, now - 6 * DAY], n:3});
-      ["Melk","Koffie","Wc-papier","Boter","Afwasmiddel","Tandpasta","Olijfolie"].forEach(n => P(n, {staple:true}));
+      demoLogs(now, P);
       P("Koffie", {store:"plus"}); P("Wc-papier", {store:"plus"});
       S.stores.lidl = {name:"Lidl", order:["brood","groente","vlees","kaas","zuivel"]};
       S.stores.plus = {name:"Plus", order:DEFAULT_ORDER};
@@ -647,7 +652,7 @@ function addItem(rawName, a, extra, quiet){
   const name = (p && p.name) || cap(rawName), cat = extra.cat || (p && p.cat) || guessCat(rawName);
   if (ex && !ex.checked) {
     const d = delta(ex, a);
-    if (d === null) { if (!quiet) toast(name + " staat er al als " + amount(ex), "Aanpassen", () => go("product", k)); flashKey = k; return render(); }
+    if (d === null) { if (!quiet) toast(name + " staat er al als " + amount(ex), "Aanpassen", () => openCard("product", k)); flashKey = k; return render(); }
     DB.inc("items", k, "qty", d);
     if (!quiet) toast(name + ": nu " + amount({qty:(ex.qty || 1) + d, unit:ex.unit}) + " op de lijst");
   } else {
@@ -658,7 +663,7 @@ function addItem(rawName, a, extra, quiet){
     DB.set("items", k, {name, cat, qty, unit, note:extra.note || "", store, checked:false, by:me(), at:Date.now()});
     const eff = store || (useBs() ? "" : defStore());
     if (!quiet && extra.store === undefined && eff && curList() !== "s:" + eff) toast(name + " staat op de lijst " + storeName(eff));
-    if (!quiet && !p && cat === "overig") toast(name + " staat bij Overig", "Categorie kiezen", () => go("product", k));
+    if (!quiet && !p && cat === "overig") toast(name + " staat bij Overig", "Categorie kiezen", () => openCard("product", k));
   }
   DB.set("products", k, {name, cat, n:((S.products[k] && S.products[k].n) || 0) + 1, last:Date.now(), ...(a.explicit && a.unit ? {unit:a.unit, dq:a.qty} : {})});
   flashKey = k; setTimeout(render, 0);
@@ -676,11 +681,8 @@ function step(k, d){
 function toggle(k, quiet){
   const it = S.items[k]; if (!it) return;
   DB.set("items", k, {checked:!it.checked, checkedAt:Date.now(), checkedBy:me()});
-  if (!it.checked) { // aankoop vastleggen voor het koopritme (meerdere tikken binnen 12 uur tellen als een)
-    const b = ((S.products[k] && S.products[k].buys) || []).slice(), now = Date.now();
-    if (b.length && now - b[b.length - 1] < DAY / 2) b[b.length - 1] = now; else b.push(now);
-    DB.set("products", k, {name:it.name, cat:it.cat, buys:b.slice(-6)});
-  }
+  recordBuy(k, it, !!it.checked);
+
   if (!quiet) try { navigator.vibrate && navigator.vibrate(8); } catch {}
 }
 function clearDone(){
@@ -721,10 +723,11 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "52";
+const APP_V = "53";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
+  chart:"<path d='M4 20V11M10 20V5M16 20v-6M2.5 20h19'/>",
   home:"<path d='M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'/>",
   layers:"<path d='m12 3 9 5-9 5-9-5z'/><path d='m3 13 9 5 9-5'/>",
   more:"<circle cx='5' cy='12' r='1.3'/><circle cx='12' cy='12' r='1.3'/><circle cx='19' cy='12' r='1.3'/>",
@@ -753,7 +756,7 @@ function applyTheme(){
 try { mq.addEventListener("change", applyTheme); } catch {}
 
 /* ---------- navigatie ---------- */
-const TABS = [["lijst", "Lijst", "list"], ["bijna-op", "Bijna op", "home"], ["templates", "Templates", "layers"], ["meer", "Meer", "more"]];
+const TABS = [["lijst", "Lijst", "list"], ["inzicht", "Inzicht", "chart"], ["templates", "Templates", "layers"], ["meer", "Meer", "more"]];
 const PARENT = {schappen:"instellingen", schap:"schappen", ding:"lijst", lijsten:"lijst", winkels:"meer", "vorige-lijsten":"meer", instellingen:"meer", looproute:"lijsten", template:"templates", bezoek:"vorige-lijsten", product:"lijst"};
 const NEEDS = {schap:1, ding:1, looproute:1, template:1, bezoek:1, product:1};
 const PAGES = {}, args = {}, scrolls = {};
@@ -1183,7 +1186,7 @@ function renderList(){
   let h = "";
   if (done.length) h += cartNote(done.length);
   const due = dueList().filter(p => prodList(p.k) === (cur === "boodschappen" ? "" : cur.slice(2)));
-  if (due.length) h += "<h3 class='ch'>Tijd voor<span class='n'>volgens jullie koopritme</span></h3><div class='chips'>" + due.map(p => "<span class='chip duo'><button data-a='dueadd' data-k='" + esc(p.k) + "'>" + esc(p.name) + "<small>om de " + p.r.days + " dagen</small></button><button data-a='snooze' data-k='" + esc(p.k) + "' aria-label='Nu niet'>" + ico("x") + "</button></span>").join("") + "</div>";
+  if (due.length) h += "<h3 class='ch'>Tijd voor<span class='n'>volgens jullie koopritme</span></h3><div class='chips'>" + due.map(p => "<span class='chip duo'><button data-a='dueadd' data-k='" + esc(p.k) + "'>" + esc(p.name) + "<small>" + dueTxt(p.r) + "</small></button><button data-a='snooze' data-k='" + esc(p.k) + "' aria-label='Nu niet'>" + ico("x") + "</button></span>").join("") + "</div>";
   if (!all.length) h += cur === "boodschappen"
     ? empty("list", "Boodschappen is leeg", "Hier komt alles waarvoor het niet uitmaakt waar je het koopt. Bij het winkelen gaat het mee naar de eerste supermarkt.") + "<div class='line center'><button class='btn sec' data-a='nav' data-k='templates'>Templates</button><button class='btn sec' data-a='nav' data-k='vorige-lijsten'>Vorige lijsten</button></div>"
     : empty("list", nm + " is leeg", "Typ hierboven wat je bij " + nm + " nodig hebt.");
@@ -1202,15 +1205,6 @@ function renderList(){
 }
 
 /* ---------- pagina's ---------- */
-PAGES["bijna-op"] = () => {
-  const edit = !!args.stEdit, st = allProducts().filter(p => p.staple).sort(byName);
-  let h = st.length ? "<p class='lead'>" + (edit ? "Tik op een product om het uit dit overzicht te halen." : "Tik aan wat thuis bijna op is. Het staat dan direct op de lijst van zijn winkel.") + "</p>" : empty("home", "Nog geen vaste producten", "Voeg hieronder toe wat jullie altijd in huis willen hebben.");
-  for (const c of DEFAULT_ORDER) { const r = st.filter(p => catOf(p.cat) === c); if (r.length) h += catHead(c) + "<div class='chips'>" + r.map(p => "<button class='chip" + (!edit && onList(p.k) ? " on" : "") + "' data-a='staple' data-k='" + esc(p.k) + "'>" + esc(p.name) + (edit ? ico("x") : "") + "</button>").join("") + "</div>"; }
-  const sug = allProducts().filter(p => !p.staple && p.n >= 2).sort((a, b) => b.n - a.n).slice(0, 8);
-  h += "<h3 class='ch'>Vast product toevoegen</h3><div class='line'><input class='field' id='stName' placeholder='bv. Olijfolie' enterkeyhint='done' data-enter='stnew'><button class='btn' data-a='stnew'>Toevoegen</button></div>" +
-    (sug.length ? "<h3 class='ch'>Vaak gekocht</h3><div class='chips'>" + sug.map(p => "<button class='chip' data-a='stadd' data-k='" + esc(p.k) + "'>" + ico("plus") + esc(p.name) + "</button>").join("") + "</div>" : "");
-  return {title:"Bijna op", act:st.length ? "<button class='tb' data-a='stedit'>" + (edit ? "Klaar" : "Beheren") + "</button>" : "", html:h};
-};
 PAGES.templates = () => {
   const ts = Object.entries(S.templates).sort((a, b) => a[1].name.localeCompare(b[1].name)), cur = curList(), mine = isX(cur) ? [] : listEntries(cur), n = mine.length, ln = listName(cur);
   let h = "<div class='pagecol'><div>" + (ts.length ? "<div class='group'>" + ts.map(([id, t]) => navCell("template", id, esc(t.name), nProd((t.items || []).length) + (storeName(t.store) ? " · " + esc(storeName(t.store)) : ""))).join("") + "</div>" : empty("layers", "Nog geen templates", "Maak hieronder een nieuwe template, of bewaar je huidige lijst als template.")) + "</div><div class='pbottom'>";
@@ -1333,7 +1327,7 @@ PAGES.lijsten = () => {
 };
 PAGES.product = () => {
   const k = args.product, it = S.items[k]; if (!it) return gone();
-  const p = product(k), ka = " data-k='" + esc(k) + "'", shops = storeList(), cs = listOf(k, it), staple = !!(p && p.staple);
+  const p = product(k), ka = " data-k='" + esc(k) + "'", shops = storeList(), cs = listOf(k, it);
   return {title:it.name, html:
     "<div class='hero'><div class='bigstep'><button data-a='minus'" + ka + " aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(it) + "</b><button data-a='plus'" + ka + " aria-label='Meer'>" + ico("plus") + "</button></div>" +
     (it.unit === "g" || it.unit === "ml" ? "<div class='chips center'>" + [50, 250, 500].map(n => "<button class='chip' data-a='addq'" + ka + " data-d='" + n + "'>+" + n + "</button>").join("") + "</div>" : "") + "</div>" +
@@ -1342,7 +1336,7 @@ PAGES.product = () => {
     "<label class='cell'><span class='lbl'>Notitie</span><input class='inl grow' id='noteIn'" + ka + " value='" + esc(it.note) + "' placeholder='bv. merk of rijpheid' enterkeyhint='done'></label></div>" +
     "<div class='group'><label class='cell'><span class='grow'>Schap</span><select id='catSel'" + ka + ">" + CATS.map(c => "<option value='" + c[0] + "'" + (catOf(it.cat) === c[0] ? " selected" : "") + ">" + c[1] + " " + esc(c[2]) + "</option>").join("") + "</select>" + ico("down") + "</label>" +
     (shops.length ? "<label class='cell'><span class='grow'>Op lijst</span><select id='storeSel'" + ka + ">" + (useBs() ? "<option value=''>Boodschappen (maakt niet uit)</option>" : "") + shops.map(s => "<option value='" + esc(s.id) + "'" + (cs === s.id ? " selected" : "") + ">" + esc(s.name) + "</option>").join("") + "</select>" + ico("down") + "</label>" : "") +
-    "<div class='cell'><span class='grow'><span class='ct'>Bijna op</span><span class='cs'>Vast product dat je thuis snel aantikt</span></span><button class='sw" + (staple ? " on" : "") + "' data-a='stoggle'" + ka + " role='switch' aria-checked='" + staple + "' aria-label='Bijna op'><i></i></button></div></div>" +
+    buyCell(k) + "</div>" +
     "<p class='hint' style='margin:-4px 2px 18px'>Schap, winkel en eenheid worden onthouden voor de volgende keer." + (it.by ? " Toegevoegd door " + esc(it.by) + "." : "") + "</p>" +
     "<div class='group'><button class='cell danger' data-a='del'" + ka + ">Van lijst halen</button>" + (p && p.custom ? "<button class='cell danger' data-a='forget'" + ka + ">Product vergeten</button>" : "") + "</div>"};
 };
@@ -1508,11 +1502,14 @@ const ACT = {
   swnext:(k, t) => { const s = t.dataset.s, n = t.dataset.n; swDo(t, k => { const it = S.items[k]; if (!it) return; const was = it.store || ""; DB.set("items", k, {store:s}); toast(it.name + " bij " + n + " halen", "Ongedaan maken", () => DB.set("items", k, {store:was})); }); },
   finish:finish, finishok:() => { closeModal(); finishNow(); }, modalclose:closeModal,
   tourstop:() => { closeModal(); const t = {...S.state.tour}; DB.set("state", "tour", {active:false}); setShop(false); window.scrollTo(0, 0); toast("Winkelronde gestopt", "Ongedaan maken", () => { DB.set("state", "tour", {...t, active:true, at:Date.now()}); setShop(true); }); },
-  stoggle:(k, t) => { const it = S.items[k], on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => DB.set("products", k, {name:it.name, cat:it.cat, staple:on}), 200); },
   clear:clearDone,
   pick:k => pick(+k),
   dueadd:k => { const p = product(k); if (p) addItem(p.name); },
-  snooze:k => { const p = product(k); if (!p) return; const r = rhythm(p); DB.set("products", k, {name:p.name, cat:p.cat, snooze:Date.now() + (r ? r.days : 4) * DAY / 2}); },
+  snooze:k => { const p = product(k); if (!p) return; const r = predict(k); DB.set("products", k, {name:p.name, cat:p.cat, snooze:Date.now() + Math.max(1, r && r.days ? r.days / 2 : 2) * DAY}); },
+  iadd:k => { const p = product(k); if (!p || onList(k)) return; addItem(p.name); render(true); },
+  iaddall:() => { const ks = soonList(1).filter(r => !onList(r.k)).map(r => r.k); ks.forEach(k => addItem(product(k).name, undefined, {}, true)); render(true); toast(nProd(ks.length) + " op de lijsten gezet"); },
+  pinzicht:k => openCard("prodinzicht", k),
+  iper:k => { args.iper = k; render(true); },
   shop:() => {
     if (document.body.classList.contains("shop")) { setShop(false); return; }
     if (tourOn()) {
@@ -1602,14 +1599,7 @@ const ACT = {
     back(); DB.del("stores", id);
     toast(old.name + " verwijderd", "Ongedaan maken", () => DB.set("stores", id, old));
   },
-  staple:k => {
-    const p = product(k); if (!p) return;
-    if (args.stEdit) return DB.set("products", k, {name:p.name, cat:p.cat, staple:false});
-    if (onList(k)) removeItem(k); else addItem(p.name, null, null, true);
-  },
-  stadd:k => { const p = product(k); if (p) DB.set("products", k, {name:p.name, cat:p.cat, staple:true}); },
-  stnew:() => { const inp = $("stName"), name = inp.value.trim(); if (!name) return inp.focus(); const k = keyOf(name), p = product(k); inp.value = ""; inp.blur(); DB.set("products", k, {name:p ? p.name : cap(name), cat:p ? p.cat : guessCat(name), staple:true}); render(true); },
-  stedit:() => { args.stEdit = !args.stEdit; render(true); },
+
   theme:k => { pref.set("theme", k); applyTheme(); render(true); },
   signout:() => { DB.signOut(); }
 };
@@ -1974,6 +1964,118 @@ addEventListener("scroll", () => $("top").classList.toggle("scrolled", window.sc
 const net = () => { $("off").hidden = navigator.onLine !== false; };
 addEventListener("online", net); addEventListener("offline", net); net();
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && document.body.classList.contains("shop") && navigator.wakeLock) navigator.wakeLock.request("screen").then(l => { wake = l; }).catch(() => {}); });
+
+/* ---------- Inzicht: koopgedrag en voorspellingen ---------- */
+// Elke aankoop (afvinken) wordt per product vastgelegd met tijdstip en hoeveelheid, los van de winkel.
+// Hoeveelheden in g en ml worden in de basiseenheid bewaard, zodat 1 kg en 500 g vergelijkbaar zijn.
+function amtBase(it){
+  const q = +it.qty || 1, u = it.unit || "";
+  return u === "kg" ? {q:q * 1000, u:"g"} : u === "l" ? {q:q * 1000, u:"ml"} : u === "g" || u === "ml" ? {q, u} : {q, u:""};
+}
+function buyLog(p){
+  if (!p) return [];
+  const L = p.log && p.log.length ? p.log : (p.buys || []).map(t => ({t, q:0, u:""}));
+  return L.filter(e => e && e.t).slice().sort((a, b) => a.t - b.t);
+}
+function recordBuy(k, it, undo){
+  const p = S.products[k] || {}, now = Date.now(), log = buyLog(p), last = log[log.length - 1];
+  // Meerdere tikken binnen 12 uur tellen als een aankoop; uitvinken binnen 12 uur haalt hem weer weg.
+  if (undo) { if (!last || now - last.t > DAY / 2) return; log.pop(); }
+  else { const a = amtBase(it), e = {t:now, q:a.q, u:a.u}; if (last && now - last.t < DAY / 2) log[log.length - 1] = e; else log.push(e); }
+  DB.set("products", k, {name:it.name, cat:it.cat, log:log.slice(-80), buys:log.slice(-6).map(e => e.t)});
+}
+const median = a => { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+// Voorspelling: recente tussenpozen wegen zwaarder, uitschieters tellen niet mee, en een grotere of kleinere
+// aankoop dan gewoonlijk schuift de volgende keer evenredig op (2 kg aardbeien duren langer dan 500 g).
+function predict(k){
+  const p = S.products[k], L = buyLog(p), now = Date.now(); if (!L.length) return null;
+  const last = L[L.length - 1], r = {k, n:L.length, last:last.t, since:(now - last.t) / DAY, log:L};
+  const same = L.filter(e => e.q && e.u === last.u); r.avgQ = same.length ? same.reduce((a, e) => a + e.q, 0) / same.length : 0; r.unit = last.u;
+  if (L.length < 2) return r;
+  // Tussenpozen omgerekend naar een gewone hoeveelheid: na een dubbele aankoop duurt het vanzelf langer.
+  const qn = e => e.q && e.u === last.u && r.avgQ ? Math.min(2.5, Math.max(.4, e.q / r.avgQ)) : 1;
+  const gaps = []; for (let i = 1; i < L.length; i++) gaps.push(Math.max(.5, (L[i].t - L[i - 1].t) / DAY / qn(L[i - 1])));
+  const md = median(gaps), g = gaps.filter(x => x <= md * 3 && x >= md / 3);
+  let s = 0, sw = 0; g.slice().reverse().forEach((x, i) => { const w = Math.pow(.7, i); s += w * x; sw += w; });
+  const base = s / sw, f = qn(last);
+  const mean = g.reduce((a, x) => a + x, 0) / g.length, mad = median(g.map(x => Math.abs(x - md)));
+  r.rhythm = Math.max(1, base); r.days = Math.max(1, base * f); r.next = last.t + r.days * DAY; r.left = (r.next - now) / DAY;
+  r.spread = Math.max(1, Math.min(Math.round(r.days * .35), Math.round(mad * 1.5 * f))); r.conf = Math.min(1, g.length / 5) * (1 - Math.min(mad / mean, 1) * .8);
+  return r;
+}
+const confTxt = c => c >= .6 ? "betrouwbaar" : c >= .35 ? "redelijk zeker" : "eerste schatting";
+const daysTxt = d => { d = Math.round(d); return d <= 0 ? "vandaag" : d === 1 ? "morgen" : "over " + d + " dagen"; };
+const leftTxt = r => r.left <= -1 ? Math.round(-r.left) + (Math.round(-r.left) === 1 ? " dag" : " dagen") + " over tijd" : r.left < .5 ? "nu nodig" : daysTxt(r.left);
+const agoTxt = d => { d = Math.floor(d); return d <= 0 ? "vandaag" : d === 1 ? "gisteren" : d + " dagen geleden"; };
+const everyTxt = d => d < 1.5 ? "elke dag" : d >= 6.5 && d < 7.5 ? "elke week" : d >= 13 && d < 15 ? "om de 2 weken" : d >= 28 ? "om de " + Math.round(d / 7) + " weken" : "om de " + Math.round(d) + " dagen";
+const qtyTxt = (q, u) => !q ? "" : u === "g" ? (q >= 1000 ? fmt(q / 1000) + " kg" : Math.round(q) + " g") : u === "ml" ? (q >= 1000 ? fmt(q / 1000) + " l" : Math.round(q) + " ml") : (n => n + (n === 1 ? " stuk" : " stuks"))(Math.max(1, Math.round(q)));
+const dueTxt = r => everyTxt(r.rhythm);
+function predictAll(){ return Object.keys(S.products).map(predict).filter(r => r && product(r.k)); }
+// Wat binnenkort nodig is (vanaf 3 aankopen), los van de winkel.
+function soonList(within){ return predictAll().filter(r => r.n >= 3 && r.days && r.left <= within && !(S.products[r.k].snooze > Date.now())).sort((a, b) => a.left - b.left); }
+// Koopritme-chips op de lijst: wat nu nodig is en nog op geen enkele lijst staat.
+function dueList(){ return soonList(1).filter(r => !S.items[r.k]).map(r => ({...product(r.k), r})).slice(0, 6); }
+function buyCell(k){
+  const r = predict(k);
+  const sub = !r ? "Nog niet gekocht via de app" : !r.days ? "1 keer gekocht, voorspelling vanaf de tweede keer" : everyTxt(r.rhythm) + " · volgende keer " + leftTxt(r);
+  return "<button class='cell' data-a='pinzicht' data-k='" + esc(k) + "'><span class='grow'><span class='ct'>Koopgedrag</span><span class='cs'>" + esc(sub) + "</span></span>" + ico("chevR") + "</button>";
+}
+function shopDays(all, from){ const d = new Set(); all.forEach(r => r.log.forEach(e => { if (e.t >= from) d.add(new Date(e.t).toDateString()); })); return d; }
+PAGES.inzicht = () => {
+  const now = Date.now(), all = predictAll(), per = args.iper || "90", from = per === "all" ? 0 : now - (+per) * DAY;
+  if (!all.length) return {title:"Inzicht", html:"<div class='empty'><p><b>Nog geen gegevens</b>Zodra jullie tijdens het winkelen producten afvinken, zie je hier wat jullie het vaakst kopen en wanneer iets waarschijnlijk weer nodig is.</p></div>"};
+  const W8 = now - 56 * DAY, days8 = shopDays(all, W8), buys8 = all.reduce((a, r) => a + r.log.filter(e => e.t >= W8).length, 0);
+  const counts = all.map(r => { const es = r.log.filter(e => e.t >= from); return {r, n:es.length, q:es.filter(e => e.u === r.unit).reduce((a, e) => a + (e.q || 0), 0)}; }).filter(x => x.n).sort((a, b) => b.n - a.n || b.q - a.q);
+  const top = counts[0], soon = all.filter(r => r.n >= 2 && r.days && r.left <= 7 && !(S.products[r.k].snooze > now)).sort((a, b) => a.left - b.left);
+  const tile = (v, l) => "<div class='itile'><b>" + v + "</b><span>" + l + "</span></div>";
+  let h = "<div class='itiles'>" + tile(days8.size ? fmt(Math.round(days8.size / 8 * 10) / 10) : "0", "keer winkelen per week") + tile(days8.size ? Math.round(buys8 / days8.size) : "0", "producten per keer") + tile(esc(top ? product(top.r.k).name : "-"), "het vaakst gekocht") + "</div>";
+  const row = r => {
+    const p = product(r.k), on = onList(r.k), pct = Math.max(4, Math.min(100, r.since / r.days * 100)), late = r.left <= -1, nw = r.left < .5, c = late ? "late" : nw ? "now" : "";
+    return "<div class='prow' data-a='pinzicht' data-k='" + esc(r.k) + "'><div class='grow'><div class='pt'><span class='pn'>" + esc(p.name) + "</span><span class='pw " + c + "'>" + leftTxt(r) + "</span></div>" +
+      "<div class='pbar'><i class='" + c + "' style='width:" + pct + "%'></i></div>" +
+      "<div class='ps'>" + everyTxt(r.rhythm) + (r.avgQ ? ", meestal " + qtyTxt(r.avgQ, r.unit) : "") + " · laatst " + agoTxt(r.since) + (r.n < 3 ? " · eerste schatting" : "") + "</div></div>" +
+      (on ? "<span class='pon' aria-label='Staat op de lijst'>" + ico("check") + "</span>" : "<button class='ib pa' data-a='iadd' data-k='" + esc(r.k) + "' aria-label='" + esc(p.name) + " op de lijst zetten'>" + ico("plus") + "</button>") + "</div>";
+  };
+  const nowL = soon.filter(r => r.left < .5), week = soon.filter(r => r.left >= .5), missing = nowL.filter(r => !onList(r.k) && r.n >= 3).length;
+  h += "<h3 class='ch'>Nu nodig<span class='n'>" + (nowL.length || "") + "</span></h3>" + (nowL.length ? "<div class='group'>" + nowL.map(row).join("") + "</div>" : "<p class='hint'>Volgens jullie koopgedrag is er nu niets nodig.</p>");
+  if (missing) h += "<button class='btn sec wide' data-a='iaddall' style='margin-top:10px'>" + ico("plus") + "Zet alles wat nu nodig is op de lijsten</button>";
+  if (week.length) h += "<h3 class='ch'>Deze week<span class='n'>" + week.length + "</span></h3><div class='group'>" + week.map(row).join("") + "</div>";
+  const max = counts.length ? counts[0].n : 1;
+  h += "<h3 class='ch'>Meest gekocht</h3><div class='seg' style='margin-bottom:10px'>" + [["30", "30 dagen"], ["90", "3 maanden"], ["all", "Alles"]].map(([k, l]) => "<button data-a='iper' data-k='" + k + "' class='" + (per === k ? "on" : "") + "'>" + l + "</button>").join("") + "</div>";
+  h += counts.length ? "<div class='group'>" + counts.slice(0, 12).map(({r, n, q}, i) => "<div class='prow top' data-a='pinzicht' data-k='" + esc(r.k) + "'><span class='rk'>" + (i + 1) + "</span><div class='grow'><div class='pt'><span class='pn'>" + esc(product(r.k).name) + "</span><span class='pc'>" + n + "×" + (q && r.unit ? " · " + qtyTxt(q, r.unit) : "") + "</span></div><div class='pbar'><i style='width:" + Math.max(4, n / max * 100) + "%'></i></div></div></div>").join("") + "</div>" : "<p class='hint'>In deze periode is nog niets gekocht.</p>";
+  const one = all.filter(r => r.n === 1).length;
+  h += "<p class='hint' style='margin-top:14px'>Hoe vaker jullie afvinken, hoe beter de voorspellingen. Een product krijgt een eerste schatting na de tweede aankoop" + (one ? " (" + nProd(one) + " " + (one === 1 ? "is" : "zijn") + " nu 1 keer gekocht)" : "") + ". Koop je meer dan gewoonlijk, dan schuift de volgende keer evenredig op.</p>";
+  return {title:"Inzicht", html:h};
+};
+// Detail per product: tijdlijn van aankopen en de voorspelling.
+PAGES.prodinzicht = () => {
+  const k = args.prodinzicht, p = product(k); if (!p) return {title:"", html:""};
+  const r = predict(k), now = Date.now();
+  const add = onList(k) ? "<p class='hint' style='text-align:center'>Staat op de lijst " + esc(listName(listOf(k, S.items[k]) ? "s:" + listOf(k, S.items[k]) : "boodschappen")) + ".</p>" : "<button class='btn wide' data-a='iadd' data-k='" + esc(k) + "'>" + ico("plus") + "Op de lijst zetten</button>";
+  if (!r) return {title:p.name, html:"<p class='hint'>" + esc(p.name) + " is nog niet via de app gekocht. Vink het af tijdens het winkelen, dan houdt de app het koopgedrag bij.</p>" + add};
+  const span = Math.max(60, Math.min(365, (now - r.log[0].t) / DAY + 7)), x = t => 8 + (1 - (now - t) / DAY / span) * 284;
+  const maxQ = Math.max(...r.log.map(e => e.q || 1));
+  let svg = "<svg class='tl' viewBox='0 0 300 64' aria-hidden='true'><line x1='8' y1='34' x2='292' y2='34'/>";
+  for (let m = 0; m <= span; m += span > 150 ? 30 : 14) { const xx = x(now - m * DAY).toFixed(1); svg += "<line class='tk' x1='" + xx + "' y1='31' x2='" + xx + "' y2='37'/>"; }
+  r.log.filter(e => now - e.t <= span * DAY).forEach(e => { const rr = 3.5 + 4.5 * Math.sqrt((e.q || 1) / maxQ); svg += "<circle cx='" + x(e.t).toFixed(1) + "' cy='34' r='" + rr.toFixed(1) + "'/>"; });
+  svg += "<text x='8' y='58'>" + Math.round(span / 7) + " weken geleden</text><text x='292' y='58' text-anchor='end'>nu</text></svg>";
+  const d = t => new Date(t).toLocaleDateString("nl-NL", {weekday:"short", day:"numeric", month:"short"});
+  const cell = (l, v) => "<div class='cell'><span class='grow'>" + l + "</span><span class='val'>" + v + "</span></div>";
+  let h = "<div class='ihero'>" + (r.days ? "<span class='lbl'>Volgende keer waarschijnlijk</span><b>" + (r.left < .5 ? "Nu nodig" : d(r.next)) + "</b><span class='sub'>" + (r.left < .5 ? (r.left <= -1 ? leftTxt(r) + " · " : "") + confTxt(r.conf) : "tussen " + (r.next - r.spread * DAY <= now ? "nu" : d(r.next - r.spread * DAY)) + " en " + d(r.next + r.spread * DAY) + " · " + confTxt(r.conf)) + "</span>" : "<span class='lbl'>Nog geen voorspelling</span><b>1 keer gekocht</b><span class='sub'>Na de volgende aankoop schat de app wanneer het weer nodig is.</span>") + "</div>";
+  h += svg + "<div class='group'>" + cell("Gekocht", r.n + " keer") + (r.days ? cell("Gemiddeld", everyTxt(r.rhythm)) : "") + (r.avgQ && r.unit ? cell("Meestal per keer", qtyTxt(r.avgQ, r.unit)) : r.avgQ ? cell("Meestal per keer", qtyTxt(r.avgQ, "")) : "") + cell("Laatst", d(r.last) + ", " + agoTxt(r.since)) + "</div>" + add;
+  return {title:p.name, html:h};
+};
+// Demo: een paar maanden aan aankopen, zodat Inzicht meteen iets laat zien.
+function demoLogs(now, P){
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  [["Melk", 4, 2, ""], ["Bananen", 6, 6, ""], ["Aardbeien", 9, 500, "g"], ["Eieren", 8, 10, ""], ["Yoghurt", 6, 1000, "ml"], ["Koffie", 18, 1, ""], ["Brood", 3, 1, ""], ["Kaas", 12, 500, "g"], ["Wc-papier", 26, 1, ""], ["Appels", 8, 1000, "g"], ["Pindakaas", 21, 1, ""], ["Tomaten", 7, 500, "g"]]
+    .forEach(([n, every, q, u]) => {
+      const k = keyOf(n); if (!CATALOG[k]) return;
+      const log = []; let t = now - 120 * DAY + rnd() * every * DAY;
+      while (t < now - DAY) { const m = rnd() < .2 ? 2 : 1; log.push({t, q:q * m, u}); t += every * m * (.8 + rnd() * .45) * DAY; }
+      P(n, {log, buys:log.slice(-6).map(e => e.t), n:log.length});
+    });
+}
 
 /* ---------- start ---------- */
 applyTheme(); buildTabs();
