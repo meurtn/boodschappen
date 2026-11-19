@@ -54,9 +54,6 @@ h1,h2,h3,p{margin:0}
 .ib.sm .i{width:18px;height:18px}
 .tb{display:inline-flex;align-items:center;gap:2px;color:var(--acc);font-size:15px;font-weight:500;padding:8px 0 8px 8px;flex:none}
 .tb .i{width:16px;height:16px}
-.pill{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px 0 11px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-size:14.5px;font-weight:500;flex:none;transition:transform .15s,background-color .15s}
-.pill:active{transform:scale(.96);background:var(--fill)}
-.pill .i{width:18px;height:18px;color:var(--acc)}
 
 /* toevoegen */
 .add{display:flex;align-items:center;height:48px;border-radius:14px;background:var(--surface);border:1px solid var(--line);padding:0 6px 0 12px;margin-bottom:10px;transition:border-color .15s,box-shadow .15s}
@@ -139,9 +136,7 @@ html,body{overflow-x:clip}
 .shead.first{border-top:0;padding-top:0;margin-top:22px}
 .lg{border-radius:50%;flex:none;object-fit:cover;background:#fff;box-shadow:0 0 0 1px var(--line)}
 .lgf{display:grid;place-items:center;color:#fff;font-weight:600;box-shadow:none;line-height:1}
-.lgbtn{flex:none;display:grid;place-items:center;margin-right:2px}
 .cell .lg+.tb{margin-left:4px}
-.navrow .lg{margin-right:4px}
 .popi .lg{margin-right:-2px}
 .shead small{margin-left:auto;font-size:13px;font-weight:400;color:var(--mute)}
 
@@ -261,10 +256,6 @@ button.chip:active{transform:scale(.96)}
 .sw i{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .2s var(--ease)}
 .sw.on{background:var(--acc)}
 .sw.on i{transform:translateX(18px)}
-.numhit{width:44px;height:44px;display:grid;place-items:center;flex:none;margin:-6px 0}
-.numhit:active .num{transform:scale(.88)}
-.navrow{display:flex;align-items:center;gap:8px;align-self:stretch;min-height:34px}
-.navrow .i{width:18px;height:18px;color:var(--faint)}
 .num{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--faint);display:grid;place-items:center;font-size:13px;font-weight:600;flex:none;transition:background-color .18s,border-color .18s}
 .num.on{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
 .hero{padding:10px 0 20px}
@@ -394,9 +385,7 @@ body.shop .toast{bottom:calc(20px + env(safe-area-inset-bottom))}
 body.shop .row{min-height:60px}
 body.shop .nm{font-size:17px}
 body.shop .tick .c{width:26px;height:26px}
-body:not(.shop) .shoponly,body:not(.shop) .nx,body:not(.shop) .shopbar{display:none}
-.shopbar{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 35%)}
-.shopbar .btn{max-width:528px;margin:0 auto;display:flex}
+body:not(.shop) .shoponly,body:not(.shop) .nx{display:none}
 
 /* melding en poort */
 .toast{pointer-events:none;position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:11px 16px;border-radius:12px;display:flex;gap:16px;align-items:center;z-index:30;width:max-content;max-width:calc(100vw - 32px);font-size:14.5px;box-shadow:0 6px 24px rgba(0,0,0,.18);animation:tin .24s var(--ease)}
@@ -551,7 +540,6 @@ const LIST = "boodschappen";
 const PATH = {items:"lists/" + LIST + "/items", products:"products", stores:"stores", templates:"templates", history:"history", xlists:"xlists", xitems:"xitems", cats:"cats", state:"state"};
 const S = {items:{}, products:{}, stores:{}, templates:{}, history:{}, xlists:{}, xitems:{}, cats:{}, state:{}};
 let DB = null, user = null, ready = false, sheet = null, flashKey = null, wake = null;
-let trip = []; try { trip = JSON.parse(pref.get("trip", "[]")) || []; } catch {}
 const DAY = 864e5;
 
 const me = () => user ? (user.displayName || user.email || "Iemand").split(" ")[0] : "Ik";
@@ -560,12 +548,6 @@ const allProducts = () => { const ks = new Set([...Object.keys(CATALOG), ...Obje
 const onList = k => S.items[k] && !S.items[k].checked;
 function guessCat(name){ const k = " " + keyOf(name) + " "; for (const [c, words] of Object.entries(GUESS)) if (words.some(w => k.includes(w))) return c; return "overig"; }
 function storeList(){ const o = {standaard:{name:"Standaard"}, ...S.stores}; return Object.entries(o).map(([id, s]) => ({id, name:s.name || id, order:s.order, logo:s.logo || "", plain:!!s.plain})).sort((a, b) => a.name.localeCompare(b.name, "nl", {sensitivity:"base"})); }
-// De route van vandaag: de winkels in de volgorde waarin je ze bezoekt (per apparaat onthouden).
-function tripStores(){ const all = storeList(), t = trip.map(id => all.find(s => s.id === id)).filter(Boolean); return t.length ? t : [all.find(s => s.id === "standaard")]; }
-function setTrip(t){ trip = t; pref.set("trip", JSON.stringify(t)); render(); }
-const store = () => tripStores()[0];
-// Bij welke winkel van de route hoort dit product: vaste winkel als die in de route zit, anders de eerste.
-function storeOf(k, it, ids){ const pr = it.store || (S.products[k] && S.products[k].store) || ""; return ids.includes(pr) ? pr : ids[0]; }
 // Koopritme: mediaan van de tussenpozen tussen de laatste aankopen.
 function rhythm(p){
   const b = p.buys; if (!b || b.length < 3) return null;
@@ -579,7 +561,7 @@ function dueList(){
 }
 const slim = v => ({name:v.name, qty:v.qty || 1, unit:v.unit || "", cat:v.cat, note:v.note || "", store:v.store || ""});
 const dateStr = at => new Date(at).toLocaleDateString("nl-NL", {weekday:"long", day:"numeric", month:"long"});
-function order(st){ const o = ((st || store()).order || DEFAULT_ORDER).filter(c => CAT[c]); for (const c of DEFAULT_ORDER) if (!o.includes(c)) o.push(c); return o; }
+function order(st){ const o = ((st || {}).order || DEFAULT_ORDER).filter(c => CAT[c]); for (const c of DEFAULT_ORDER) if (!o.includes(c)) o.push(c); return o; }
 
 /* ---------- opslag: lokaal (demo) of Firebase ---------- */
 const Local = {
@@ -599,7 +581,6 @@ const Local = {
       P("Koffie", {store:"plus"}); P("Wc-papier", {store:"plus"});
       S.stores.lidl = {name:"Lidl", order:["brood","groente","vlees","kaas","zuivel"]};
       S.stores.plus = {name:"Plus", order:DEFAULT_ORDER};
-      if (!trip.length) { trip = ["lidl", "plus"]; pref.set("trip", JSON.stringify(trip)); }
       pref.set("seeded2", "1"); this.save();
     }
     $("demo").hidden = false; start();
@@ -708,7 +689,7 @@ function clearDone(){
   const now = Date.now(), hist = Object.entries(S.history).sort((a, b) => b[1].at - a[1].at), last = hist[0];
   const merge = last && now - last[1].at < 3 * 36e5, hid = merge ? last[0] : String(now), prev = merge ? last[1] : null;
   const items = (prev ? prev.items : []).filter(i => !done.some(([k]) => k === keyOf(i.name))).concat(done.map(([, v]) => slim(v)));
-  DB.set("history", hid, {at:now, by:me(), stores:tripStores().map(s => s.name).join(" + "), items});
+  DB.set("history", hid, {at:now, by:me(), stores:[...new Set(done.map(([k, v]) => storeName(listOf(k, v)) || "Boodschappen"))].join(" + "), items});
   hist.slice(merge ? 10 : 9).forEach(([id]) => DB.del("history", id));
   done.forEach(([k]) => DB.del("items", k));
   toast(nProd(done.length) + " gewist en bewaard bij Vorige lijsten", "Ongedaan maken", () => { done.forEach(([k, v]) => DB.set("items", k, v)); if (prev) DB.set("history", hid, prev); else DB.del("history", hid); });
@@ -740,7 +721,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "51";
+const APP_V = "52";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -1117,7 +1098,7 @@ function wrow(v, right, cls){
 }
 function renderWatch(cur){
   if (tourOn()) return renderWatchTour();
-  const xl = true, all = isX(cur) ? xOf(cur) : listEntries(cur);
+  const all = isX(cur) ? xOf(cur) : listEntries(cur);
   const done = all.filter(([, v]) => v.checked).sort((a, b) => (b[1].checkedAt || 0) - (a[1].checkedAt || 0));
   const miss = all.filter(([, v]) => !v.checked && v.missing), open = all.filter(([, v]) => !v.checked && !v.missing);
   const name = listName(cur);
@@ -1134,23 +1115,7 @@ function renderWatch(cur){
   let h = "";
   const last = done[0] && done[0][1].checkedAt ? done[0][1] : null;
   if (!all.length) h += empty("eye", "Nog niets op de lijst", "Zodra er iets op " + name + " staat, kun je hier meekijken.");
-  // winkelroute: welke winkel is klaar, waar is de ander nu
-  let curStore = null;
-  if (!xl) {
-    const ts = tripStores(), ids = ts.map(s => s.id), sOf = ([k, v]) => storeOf(k, v, ids);
-    const stat = ts.map(st => ({st, tot:all.filter(e => sOf(e) === st.id).length, open:open.filter(e => sOf(e) === st.id).length, done:done.filter(e => sOf(e) === st.id).length}));
-    const lastSt = done[0] ? sOf(done[0]) : null;
-    curStore = (stat.find(s => s.st.id === lastSt && s.open) || stat.find(s => s.open) || {}).st || null;
-    if (ts.length > 1) h += "<div class='route'>" + stat.map((s, i) => {
-      const state = s.tot && !s.open ? "klaar" : curStore && s.st.id === curStore.id ? "nu" : "straks";
-      return (i ? "<span class='rline" + (state === "straks" ? "" : " on") + "'></span>" : "") + "<div class='rstop " + state + "'>" + logoHtml(s.st.name, s.st.logo, 34) + (state === "klaar" ? "<span class='rok'>" + ico("check") + "</span>" : "") + "<b>" + esc(s.st.name) + "</b><small>" + (state === "klaar" ? "klaar" : state === "nu" ? "nu hier" : "straks") + " · " + s.done + "/" + s.tot + "</small></div>";
-    }).join("") + "</div>";
-    for (const s of stat) {
-      const rows = open.filter(e => sOf(e) === s.st.id); if (!rows.length) continue;
-      const ord = order(s.st); rows.sort((a, b) => ord.indexOf(catOf(a[1].cat)) - ord.indexOf(catOf(b[1].cat)) || a[1].name.localeCompare(b[1].name));
-      h += "<h3 class='ch'>" + (curStore && s.st.id === curStore.id ? "Nog te pakken" + (ts.length > 1 ? " bij " + esc(s.st.name) : "") : "Straks bij " + esc(s.st.name)) + "<span class='n'>" + rows.length + "</span></h3><div class='group'>" + rows.map(([, v]) => wrow(v)).join("") + "</div>";
-    }
-  } else if (open.length) h += "<h3 class='ch'>Nog te pakken<span class='n'>" + open.length + "</span></h3><div class='group'>" + open.map(([, v]) => wrow(v)).join("") + "</div>";
+  if (open.length) h += "<h3 class='ch'>Nog te pakken<span class='n'>" + open.length + "</span></h3><div class='group'>" + open.map(([, v]) => wrow(v)).join("") + "</div>";
   if (miss.length) h += "<h3 class='ch'>Niet gevonden<span class='n'>" + miss.length + "</span></h3><div class='group'>" + miss.map(([, v]) => wrow(v, "", "miss")).join("") + "</div>";
   if (done.length) h += "<h3 class='ch'>In het karretje<span class='n'>" + done.length + "</span></h3><div class='group'>" + done.map(([, v]) => wrow(v, "<small class='wt'>" + clock(v.checkedAt) + "</small>", "in")).join("") + "</div>";
   $("list").innerHTML = h; flashKey = null;
@@ -1196,10 +1161,10 @@ function runFlash(){
     setTimeout(() => { if (host.firstChild === f) host.innerHTML = ""; flashBusy = false; runFlash(); }, 2450);
     return;
   }
-  const st = !v.list ? storeList().find(s => s.id === storeOf(keyOf(v.name), v, tripStores().map(x => x.id))) : null;
+  const st = !v.list ? storeList().find(s => s.id === listOf(keyOf(v.name), v)) : null;
   flashBusy = true;
   const host = $("flashHost");
-  host.innerHTML = "<div class='flash'><div class='fcard'><span class='fc'>" + ico("check") + "</span><small>In het karretje" + (v.checkedBy ? " · " + esc(v.checkedBy) : "") + "</small><b>" + esc(v.name) + "</b>" + (badge(v) ? "<span class='fq'>" + badge(v) + "</span>" : "") + (st && tripStores().length > 1 ? "<span class='fs'>" + logoHtml(st.name, st.logo, 20) + esc(st.name) + "</span>" : "") + "</div></div>";
+  host.innerHTML = "<div class='flash'><div class='fcard'><span class='fc'>" + ico("check") + "</span><small>In het karretje" + (v.checkedBy ? " · " + esc(v.checkedBy) : "") + "</small><b>" + esc(v.name) + "</b>" + (badge(v) ? "<span class='fq'>" + badge(v) + "</span>" : "") + (st && tourOn() && tourStops().length > 1 ? "<span class='fs'>" + logoHtml(st.name, st.logo, 20) + esc(st.name) + "</span>" : "") + "</div></div>";
   const f = host.firstChild;
   setTimeout(() => { f.classList.add("out"); }, flashQ.length ? 1300 : 1900);
   setTimeout(() => { if (host.firstChild === f) host.innerHTML = ""; flashBusy = false; runFlash(); }, flashQ.length ? 1600 : 2250);
@@ -1247,10 +1212,10 @@ PAGES["bijna-op"] = () => {
   return {title:"Bijna op", act:st.length ? "<button class='tb' data-a='stedit'>" + (edit ? "Klaar" : "Beheren") + "</button>" : "", html:h};
 };
 PAGES.templates = () => {
-  const ts = Object.entries(S.templates).sort((a, b) => a[1].name.localeCompare(b[1].name)), n = Object.keys(S.items).length, st = store();
+  const ts = Object.entries(S.templates).sort((a, b) => a[1].name.localeCompare(b[1].name)), cur = curList(), mine = isX(cur) ? [] : listEntries(cur), n = mine.length, ln = listName(cur);
   let h = "<div class='pagecol'><div>" + (ts.length ? "<div class='group'>" + ts.map(([id, t]) => navCell("template", id, esc(t.name), nProd((t.items || []).length) + (storeName(t.store) ? " · " + esc(storeName(t.store)) : ""))).join("") + "</div>" : empty("layers", "Nog geen templates", "Maak hieronder een nieuwe template, of bewaar je huidige lijst als template.")) + "</div><div class='pbottom'>";
   h += "<hr class='sep'><h3 class='ch'>Nieuwe template</h3><div class='line'><input class='field' id='tNew' placeholder='Naam, bv. Gourmet' enterkeyhint='done' autocapitalize='sentences' data-enter='tnew'><button class='btn fixw' data-a='tnew'>Maken</button></div><p class='hint'>Begint leeg. Daarna voeg je de producten toe.</p>";
-  h += "<h3 class='ch'>Huidige lijst bewaren als template</h3>" + (n ? "<div class='line'><input class='field' id='tName' placeholder='Naam, bv. Weekmenu' enterkeyhint='done' autocapitalize='sentences' data-enter='tsave'><button class='btn fixw' data-a='tsave'>Bewaren</button></div>" + (st.id !== "standaard" ? "<label class='check'><input type='checkbox' id='tStore'>Alleen voor " + esc(st.name) + "</label>" : "") + "<p class='hint'>Op de lijst: " + nProd(n) + ".</p>" : "<p class='hint'>Zet eerst producten op de lijst.</p>") + "</div></div>";
+  h += "<h3 class='ch'>Lijst " + esc(ln) + " bewaren als template</h3>" + (n ? "<div class='line'><input class='field' id='tName' placeholder='Naam, bv. Weekmenu' enterkeyhint='done' autocapitalize='sentences' data-enter='tsave'><button class='btn fixw' data-a='tsave'>Bewaren</button></div>" + "<p class='hint'>Op de lijst " + esc(ln) + ": " + nProd(n) + ". De winkel per product gaat mee.</p>" : "<p class='hint'>" + (isX(cur) ? "Templates werken met winkellijsten. Open eerst een winkellijst." : "Zet eerst producten op de lijst " + esc(ln) + ".") + "</p>") + "</div></div>";
   return {title:"Templates", html:h};
 };
 // Producten van een template per winkel groeperen, zodra er een winkel aan een product hangt.
@@ -1457,7 +1422,6 @@ document.addEventListener("pointerdown", e => { if ($("toastHost").firstChild &&
 
 /* ---------- gebeurtenissen ---------- */
 const packName = (kind, p) => kind === "templates" ? p.name : "Lijst van " + dateStr(p.at);
-const tripIds = () => trip.length ? tripStores().map(s => s.id) : [];
 const ACT = {
   nav:(k, t) => go(k, t.dataset.arg), back,
   toggle:(k, t, e, x) => {
@@ -1508,7 +1472,7 @@ const ACT = {
     }
     const it = S.items[k]; if (!it) return;
     flashKey = k; DB.set("items", k, {store:s});
-    if (s && !tripStores().some(x => x.id === s)) toast(nm + " staat niet in je route van vandaag", "Route aanpassen", () => go("winkels"));
+    toast(nm + " staat nu op de lijst " + (storeName(listOf(k, {store:s})) || "Boodschappen"));
   },
   newlist:() => { closePop(); go("lijsten"); setTimeout(() => { const i = $("lName"); if (i) i.focus(); }, 300); },
   setlist:k => switchList(k),
@@ -1544,11 +1508,9 @@ const ACT = {
   swnext:(k, t) => { const s = t.dataset.s, n = t.dataset.n; swDo(t, k => { const it = S.items[k]; if (!it) return; const was = it.store || ""; DB.set("items", k, {store:s}); toast(it.name + " bij " + n + " halen", "Ongedaan maken", () => DB.set("items", k, {store:was})); }); },
   finish:finish, finishok:() => { closeModal(); finishNow(); }, modalclose:closeModal,
   tourstop:() => { closeModal(); const t = {...S.state.tour}; DB.set("state", "tour", {active:false}); setShop(false); window.scrollTo(0, 0); toast("Winkelronde gestopt", "Ongedaan maken", () => { DB.set("state", "tour", {...t, active:true, at:Date.now()}); setShop(true); }); },
-  next:(k, t) => { const it = S.items[k], s = t.dataset.s, was = storeOf(k, it, tripStores().map(x => x.id)); flashKey = k; DB.set("items", k, {store:s}); toast(it.name + " verplaatst naar " + t.dataset.n, "Ongedaan maken", () => { flashKey = k; DB.set("items", k, {store:was}); }); },
   stoggle:(k, t) => { const it = S.items[k], on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => DB.set("products", k, {name:it.name, cat:it.cat, staple:on}), 200); },
   clear:clearDone,
   pick:k => pick(+k),
-  quick:k => { const p = product(k); if (p) addItem(p.name); $("q").focus(); },
   dueadd:k => { const p = product(k); if (p) addItem(p.name); },
   snooze:k => { const p = product(k); if (!p) return; const r = rhythm(p); DB.set("products", k, {name:p.name, cat:p.cat, snooze:Date.now() + (r ? r.days : 4) * DAY / 2}); },
   shop:() => {
@@ -1570,7 +1532,6 @@ const ACT = {
     if (startMode === "stale") finishNow(true);
     const keep = (S.state.tour && (S.state.tour.route || S.state.tour.stops)) || [];
     DB.set("state", "tour", only === true ? {stops:startSel.slice(), route:keep, single:true, active:true, by:me(), at:Date.now()} : {stops:startSel.slice(), route:startSel.slice(), single:false, active:true, by:me(), at:Date.now()});
-    const sup = startSel.filter(s => s[0] === "s").map(s => s.slice(2)); if (sup.length) setTrip(sup);
     closeModal(); watchSeen = null; setShop(true); window.scrollTo(0, 0); toast("Tik om af te vinken, veeg opzij voor meer opties");
   },
   share:() => {
@@ -1612,9 +1573,9 @@ const ACT = {
   },
   tsave:() => {
     const inp = $("tName"), name = inp.value.trim(); if (!name) return inp.focus();
-    const st = $("tStore") && $("tStore").checked ? store().id : "";
+    const cur = curList(); if (isX(cur)) return;
     inp.value = ""; inp.blur();
-    DB.set("templates", keyOf(name) + (st ? " @" + st : ""), {name, store:st, items:Object.values(S.items).map(slim), at:Date.now()});
+    DB.set("templates", keyOf(name), {name, store:"", items:listEntries(cur).map(([k, v]) => ({...slim(v), store:listOf(k, v)})), at:Date.now()});
     render(true); toast("Template " + name + " bewaard");
   },
   tnew:() => {
@@ -1625,7 +1586,6 @@ const ACT = {
     DB.set("templates", id, {name, store:"", items:[], at:Date.now()});
     go("template", id); setTimeout(() => { const a = $("tplAdd"); if (a) a.focus(); }, 320);
   },
-  trip:k => { let ids = tripIds(); if (ids.includes(k)) { if (ids.length > 1) ids = ids.filter(i => i !== k); } else ids.push(k); setTrip(ids); },
   sadd:() => { const inp = $("sName"), name = inp.value.trim(); if (!name) return inp.focus(); const id = keyOf(name); inp.value = ""; inp.blur(); if (!storeList().some(s => s.id === id)) DB.set("stores", id, {name, order:DEFAULT_ORDER.slice()}); render(true); toast("Winkel " + name + " met eigen lijst toegevoegd", "Openen", () => ACT.openlist("s:" + id)); },
   setplain:(k, t) => { const st = storeList().find(s => s.id === k); if (!st) return; const on = !t.classList.contains("on"); t.classList.toggle("on", on); setTimeout(() => { DB.set("stores", k, {name:st.name, order:order(st), plain:!on}); render(true); }, 200); },
   openlist:k => { pref.set("list", k); $("q").value = ""; go("lijst"); render(true); },
@@ -1638,9 +1598,9 @@ const ACT = {
     render(true); toast(l.name + " is nu een winkel met eigen lijst");
   },
   sdel:() => {
-    const id = args.looproute, old = S.stores[id], oldTrip = trip.slice(); if (!old) return;
-    back(); DB.del("stores", id); setTrip(trip.filter(i => i !== id));
-    toast(old.name + " verwijderd", "Ongedaan maken", () => { DB.set("stores", id, old); setTrip(oldTrip); });
+    const id = args.looproute, old = S.stores[id]; if (!old) return;
+    back(); DB.del("stores", id);
+    toast(old.name + " verwijderd", "Ongedaan maken", () => DB.set("stores", id, old));
   },
   staple:k => {
     const p = product(k); if (!p) return;

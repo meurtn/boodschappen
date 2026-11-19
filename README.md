@@ -1,16 +1,16 @@
 # Lijstjes
 
-Gedeelde gezinslijstjes als installeerbare web-app (PWA). Versie 1: boodschappen.
+Gedeelde gezinslijstjes als installeerbare web-app (PWA): een lijst per winkel, losse lijsten, templates, Bijna op, koopritme, een winkelronde langs meerdere winkels en live meekijken.
 Zonder Firebase-configuratie draait de app in demomodus (alleen lokaal), zodat je direct kunt proberen: open `index.html`.
 
 ## Bestanden
 
 | Bestand | Doel |
 |---|---|
-| `index.html` | De hele app (opmaak, logica, productcatalogus) |
+| `index.html` | De hele app (opmaak, logica en de vaste catalogus van ongeveer 380 bekende producten) |
 | `firebase-config.js` | Jouw Firebase-configuratie; blijft staan bij updates van `index.html` |
 | `firestore.local.rules` | Toegangsregels met de vaste lijst mailadressen. Staat bewust niet op GitHub (zie `.gitignore`) |
-| `sw.js`, `manifest.webmanifest`, `icon-*.png` | Installeren op het beginscherm en offline starten |
+| `sw.js`, `manifest.webmanifest`, `icon-*.png` | Installeren op het beginscherm en offline starten (bij slecht bereik na 2,5 seconden de opgeslagen versie) |
 | `firebase.json` | Instellingen voor `firebase deploy` |
 
 ## Eenmalig koppelen (ongeveer 10 minuten)
@@ -38,11 +38,14 @@ De toegang wordt afgedwongen door `firestore.local.rules` op de server, niet in 
 
 ## Gegevensmodel (Firestore)
 
-- `lists/boodschappen/items/{sleutel}`: naam, cat, qty, note, checked, by. De sleutel is de genormaliseerde productnaam, waardoor hetzelfde product nooit dubbel op de lijst komt en gelijktijdig ophogen veilig optelt.
-- `products/{sleutel}`: eigen producten, geleerde schap en hoe vaak gekocht (voor suggesties).
-- `products/{sleutel}` bevat ook: eenheid en standaardhoeveelheid, vaste winkel, de laatste aankoopmomenten (koopritme) en of het in Bijna op staat.
-- `stores/{id}`: naam en schapvolgorde (looproute) per winkel. Welke winkels je vandaag bezoekt en in welke volgorde wordt per apparaat onthouden.
-- `templates/{id}`: naam, optionele winkel en producten.
+- `lists/boodschappen/items/{sleutel}`: de producten op de winkellijsten: naam, cat, qty, unit, note, store (op welke winkellijst), checked, missing en wie het deed. De sleutel is de genormaliseerde productnaam, waardoor hetzelfde product nooit dubbel op een lijst komt en gelijktijdig ophogen veilig optelt.
+- `products/{sleutel}`: alleen producten die jullie gebruiken: naam, schap, vaste winkel, eenheid en standaardhoeveelheid, hoe vaak toegevoegd, de laatste aankoopmomenten (koopritme), Bijna op en tijdelijk verborgen. De bekende producten staan als catalogus in `index.html`; wat hier staat gaat daarvoor.
+- `stores/{id}`: naam, logo, looproute (schapvolgorde) en of de winkel schappen gebruikt.
+- `xlists/{id}` en `xitems/{lijst|sleutel}`: de losse lijsten (zonder winkel) en hun items.
+- `cats/{id}`: eigen schappen en aanpassingen aan de standaardschappen.
+- `templates/{id}`: naam en producten, met per product de winkel.
 - `history/{tijdstip}`: de laatste 10 winkelbezoeken (Vorige lijsten).
+- `state/tour`: de lopende winkelronde (winkels in volgorde, wie, wanneer) en de onthouden route. Gedeeld, zodat meekijken werkt.
+- `state/cfg`: of de lijst Boodschappen aan staat en de standaardwinkel. `state/mig`: welke eenmalige omzetting al gedaan is.
 
-Nieuwe lijstsoorten (to-do's, cadeaus, klusjes) passen later als extra documenten onder `lists/`.
+Per apparaat (niet gedeeld) worden alleen het thema, de compactheid en de laatst geopende lijst onthouden.
