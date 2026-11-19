@@ -726,7 +726,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "54";
+const APP_V = "55";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -1176,6 +1176,7 @@ function runFlash(){
   setTimeout(() => { if (host.firstChild === f) host.innerHTML = ""; flashBusy = false; runFlash(); }, flashQ.length ? 1600 : 2250);
 }
 function renderList(){
+  swipeReset();
   let shop = document.body.classList.contains("shop");
   const cur = curList(), nm = listName(cur);
   $("q").placeholder = cur === "boodschappen" ? "Voeg toe, bv. 2 paprika" : "Voeg toe aan " + nm;
@@ -1715,6 +1716,7 @@ function switchList(k, dir){
   if (dir) return;
   m.classList.remove("swap"); void m.offsetWidth; m.classList.add("swap");
 }
+let swipeReset = () => {};
 // Vegen naar links of rechts in een gewone lijst: de volgende of vorige lijst schuift er als echte pagina naast mee,
 // en de titel bovenin (logo en naam) schuift ook mee. Niet tijdens winkelen of meekijken.
 // Alleen transform en opacity veranderen (GPU), bijgewerkt per frame, zodat het vloeiend blijft.
@@ -1755,7 +1757,7 @@ function switchList(k, dir){
     if (tg) { tg.style.transition = "none"; tg.style.transform = "translate3d(" + (-s * (1 - p) * 60) + "px,0,0)"; tg.style.opacity = String(Math.max(0, p * 1.4 - .4)); }
   };
   const paint = () => {
-    raf = 0; const [ls, i] = lists(), edge = (dx > 0 && i <= 0) || (dx < 0 && i >= ls.length - 1);
+    raf = 0; if (!on) return; const [ls, i] = lists(), edge = (dx > 0 && i <= 0) || (dx < 0 && i >= ls.length - 1);
     const x = edge ? dx / (1 + Math.abs(dx) / 60) : dx;
     if (!edge && dx) ghost(ls[i + (dx < 0 ? 1 : -1)], dx < 0 ? 1 : -1); else clearGhost();
     m().style.transform = "translate3d(" + x + "px,0,0)";
@@ -1771,6 +1773,9 @@ function switchList(k, dir){
   // tijdens het vegen opnieuw getekend wordt en het element niet meer in de pagina hangt.
   let tgt = null;
   const unbind = () => { if (!tgt) return; tgt.removeEventListener("touchmove", move); tgt.removeEventListener("touchend", end); tgt.removeEventListener("touchcancel", end); tgt = null; };
+  // Restanten van een onderbroken veeg (bv. app op de achtergrond) opruimen vóór elke nieuwe weergave.
+  swipeReset = () => { if (on || busy) return; clearGhost(); const el = m(); if (el && (el.style.transform || el.style.transition || el.style.opacity)) el.style.transform = el.style.transition = el.style.opacity = el.style.willChange = ""; };
+  addEventListener("visibilitychange", () => { if (document.hidden) { on = false; busy = false; if (raf) cancelAnimationFrame(raf); raf = 0; unbind(); swipeReset(); } });
   document.addEventListener("touchstart", e => {
     unbind(); on = e.touches.length === 1 && ok(e); if (!on) return;
     x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now(); lock = null; dx = 0;
@@ -1804,7 +1809,7 @@ function switchList(k, dir){
     clearGhost();
     el.style.transition = "none"; el.style.transform = "";
     switchList(ls[n], s);
-    el.style.willChange = "";
+    void el.offsetWidth; el.style.transition = el.style.willChange = "";
     busy = false;
   };
 
