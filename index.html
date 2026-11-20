@@ -44,10 +44,8 @@ h1,h2,h3,p{margin:0}
 .top.scrolled{border-bottom-color:var(--line)}
 .barin{display:flex;align-items:center;gap:6px;min-height:56px;padding:6px 0}
 .barin h1{font-size:22px;font-weight:600;letter-spacing:-.015em;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* Lange lijstnamen: kleiner en desnoods over twee regels, nooit afgekapt */
-.barin h1.long{font-size:19px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15}
-.barin h1 .ttl{display:flex;min-width:0}.barin h1 .tn{min-width:0;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.barin h1.long:has(.ttl){display:block}
+/* Titel altijd op een regel en in dezelfde grootte, zodat vegen tussen lijsten rustig blijft */
+.barin h1 .ttl{display:flex;min-width:0;max-width:100%}.barin h1 .tn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .barin h1.sm{font-size:17px;letter-spacing:-.005em}
 .sub{font-size:13.5px;color:var(--mute);margin-top:1px}
 .sub button{color:var(--acc)}
@@ -570,9 +568,12 @@ let DB = null, user = null, ready = false, sheet = null, flashKey = null, wake =
 const DAY = 864e5;
 
 const me = () => user ? (user.displayName || user.email || "Iemand").split(" ")[0] : "Ik";
-const product = k => { const c = CATALOG[k], p = S.products[k]; return (c || (p && p.name)) ? {k, name:(p && p.name) || c.name, cat:(p && p.cat) || (c && c.cat) || "overig", n:(p && p.n) || 0, unit:(p && p.unit) || "", dq:(p && p.dq) || 0, buys:(p && p.buys) || [], staple:!!(p && p.staple), store:(p && p.store) || "", snooze:(p && p.snooze) || 0, custom:!c} : null; };
+const product = k => { k = pkOf(k); const c = CATALOG[k], p = S.products[k]; return (c || (p && p.name)) ? {k, name:(p && p.name) || c.name, cat:(p && p.cat) || (c && c.cat) || "overig", n:(p && p.n) || 0, unit:(p && p.unit) || "", dq:(p && p.dq) || 0, buys:(p && p.buys) || [], staple:!!(p && p.staple), store:(p && p.store) || "", snooze:(p && p.snooze) || 0, custom:!c} : null; };
 const allProducts = () => { const ks = new Set([...Object.keys(CATALOG), ...Object.keys(S.products)]); return [...ks].map(product).filter(Boolean); };
-const onList = k => S.items[k] && !S.items[k].checked;
+const pkOf = id => String(id).split("@")[0];
+// Staat dit product (sleutel zonder @) ergens open op een lijst? Geeft het item-id terug.
+const openId = k => Object.keys(S.items).find(id => pkOf(id) === k && !S.items[id].checked) || null;
+const onList = k => !!openId(pkOf(k));
 function guessCat(name){ const k = " " + keyOf(name) + " "; for (const [c, words] of Object.entries(GUESS)) if (words.some(w => k.includes(w))) return c; return "overig"; }
 function storeList(){ const o = {standaard:{name:"Standaard"}, ...S.stores}; return Object.entries(o).map(([id, s]) => ({id, name:s.name || id, order:s.order, logo:s.logo || "", plain:!!s.plain})).sort((a, b) => a.name.localeCompare(b.name, "nl", {sensitivity:"base"})); }
 const slim = v => ({name:v.name, qty:v.qty || 1, unit:v.unit || "", cat:v.cat, note:v.note || "", store:v.store || ""});
@@ -600,8 +601,8 @@ const Local = {
     $("demo").hidden = false; start();
   },
   save(){ try { localStorage.setItem("lijstjes.demo", JSON.stringify(S)); } catch {} },
-  set(c, id, d){ S[c][id] = {...(S[c][id] || {}), ...d}; this.save(); render(); },
-  del(c, id){ delete S[c][id]; this.save(); render(); },
+  set(c, id, d){ if (c === "products") id = pkOf(id); S[c][id] = {...(S[c][id] || {}), ...d}; this.save(); render(); },
+  del(c, id){ if (c === "products") id = pkOf(id); delete S[c][id]; this.save(); render(); },
   inc(c, id, f, n){ if (S[c][id]) { S[c][id][f] = (S[c][id][f] || 0) + n; this.save(); render(); } },
   signOut(){}
 };
@@ -639,8 +640,8 @@ const Fire = {
   fail(e){ toast(e.code === "permission-denied" ? "Geen toegang" : "Opslaan mislukt: " + (e.code || e)); },
   // Wijzigingen meteen lokaal doorvoeren en tonen; Firebase bevestigt daarna via de snapshot.
   // Zo zie je nooit even de oude waarde terug na een wijziging.
-  set(c, id, d){ S[c][id] = {...(S[c][id] || {}), ...d}; render(); this.F.setDoc(this.ref(c, id), d, {merge:true}).catch(e => this.fail(e)); },
-  del(c, id){ delete S[c][id]; render(); this.F.deleteDoc(this.ref(c, id)).catch(e => this.fail(e)); },
+  set(c, id, d){ if (c === "products") id = pkOf(id); S[c][id] = {...(S[c][id] || {}), ...d}; render(); this.F.setDoc(this.ref(c, id), d, {merge:true}).catch(e => this.fail(e)); },
+  del(c, id){ if (c === "products") id = pkOf(id); delete S[c][id]; render(); this.F.deleteDoc(this.ref(c, id)).catch(e => this.fail(e)); },
   inc(c, id, f, n){ if (S[c][id]) { S[c][id][f] = (S[c][id][f] || 0) + n; render(); } this.F.updateDoc(this.ref(c, id), {[f]:this.F.increment(n)}).catch(e => this.fail(e)); },
   signOut(){ ready = false; this.U.signOut(this.auth); }
 };
@@ -657,25 +658,27 @@ function delta(ex, a){ const eu = ex.unit || ""; return a && a.explicit ? conver
 function addItem(rawName, a, extra, quiet){
   a = a || {}; extra = extra || {};
   const k = keyOf(rawName); if (!k) return;
-  const p = product(k), ex = S.items[k];
-  const name = (p && p.name) || cap(rawName), cat = extra.cat || (p && p.cat) || guessCat(rawName);
+  const p = product(k), name = (p && p.name) || cap(rawName), cat = extra.cat || (p && p.cat) || guessCat(rawName);
+  // Op welke lijst komt het: de gekozen lijst, anders de vaste winkel van het product (of de standaard).
+  const pst = (S.products[k] && S.products[k].store) || "", store = extra.store !== undefined ? extra.store : (pst && storeList().some(s => s.id === pst) ? pst : "");
+  const sid = listOf(k, {store}), id0 = Object.keys(S.items).find(id => pkOf(id) === k && listOf(id, S.items[id]) === sid) || null, ex = id0 && S.items[id0];
+  let id = id0;
   if (ex && !ex.checked) {
     const d = delta(ex, a);
-    if (d === null) { if (!quiet) toast(name + " staat er al als " + amount(ex), "Aanpassen", () => openCard("product", k)); flashKey = k; return render(); }
-    DB.inc("items", k, "qty", d);
+    if (d === null) { if (!quiet) toast(name + " staat er al als " + amount(ex), "Aanpassen", () => openCard("product", id0)); flashKey = id0; return render(); }
+    DB.inc("items", id0, "qty", d);
     if (!quiet) toast(name + ": nu " + amount({qty:(ex.qty || 1) + d, unit:ex.unit}) + " op de lijst");
   } else {
+    if (!id) id = S.items[k] ? k + "@" + (sid || "bs") : k;
     const unit = a.explicit ? (a.unit || "") : ((p && p.unit) || "");
     const qty = a.explicit ? a.qty : ((p && p.unit && p.dq) || defQty(unit));
-    // Zonder opgegeven lijst gaat een product naar de lijst van zijn vaste winkel (of Boodschappen).
-    const pst = (S.products[k] && S.products[k].store) || "", store = extra.store !== undefined ? extra.store : (pst && storeList().some(s => s.id === pst) ? pst : "");
-    DB.set("items", k, {name, cat, qty, unit, note:extra.note || "", store, checked:false, by:me(), at:Date.now()});
+    DB.set("items", id, {name, cat, qty, unit, note:extra.note || "", store, checked:false, by:me(), at:Date.now(), missing:false});
     const eff = store || (useBs() ? "" : defStore());
     if (!quiet && extra.store === undefined && eff && curList() !== "s:" + eff) toast(name + " staat op de lijst " + storeName(eff));
-    if (!quiet && !p && cat === "overig") toast(name + " staat bij Overig", "Categorie kiezen", () => openCard("product", k));
+    if (!quiet && !p && cat === "overig") toast(name + " staat bij Overig", "Categorie kiezen", () => openCard("product", id));
   }
   DB.set("products", k, {name, cat, n:((S.products[k] && S.products[k].n) || 0) + 1, last:Date.now(), ...(a.explicit && a.unit ? {unit:a.unit, dq:a.qty} : {})});
-  flashKey = k; setTimeout(render, 0);
+  flashKey = id; setTimeout(render, 0);
 }
 function removeItem(k){
   const old = S.items[k]; if (!old) return;
@@ -732,7 +735,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "57";
+const APP_V = "60";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -863,7 +866,7 @@ function renderSug(){
   if (!(sugRows[0] && sugRows[0].s >= 100)) sugRows.push({isNew:true, k, name:cap(name), cat:guessCat(name)});
   enterIdx = sugRows[0] && !sugRows[0].isNew && sugRows[0].s >= 60 ? 0 : sugRows.findIndex(r => r.isNew);
   box.innerHTML = sugRows.map((r, i) => {
-    const it = onList(r.k) ? S.items[r.k] : null, d = it ? delta(it, arg) : 0;
+    const cid = curItemId(r.k), it = cid ? S.items[cid] : null, d = it ? delta(it, arg) : 0;
     const what = arg.explicit ? badge(arg) : (r.unit && r.dq ? amount({qty:r.dq, unit:r.unit}) : "");
     const right = r.isNew ? "<small>" + (what ? esc(what) + " · " : "") + "Nieuw product</small>"
       : it ? "<small class='inc'>Staat er al · " + amount(it) + (d === null ? "" : " → " + amount({qty:(it.qty || 1) + d, unit:it.unit})) + "</small>"
@@ -1337,7 +1340,7 @@ PAGES.lijsten = () => {
     "<div class='line'><input class='field' id='lName' placeholder='Nieuwe losse lijst, bv. Cadeaus' enterkeyhint='done' autocapitalize='sentences' data-enter='ladd'><button class='btn fixw' data-a='ladd'>Toevoegen</button></div>"};
 };
 PAGES.product = () => {
-  const k = args.product, it = S.items[k]; if (!it) return gone();
+  const k = args.product, it = S.items[k], pk = pkOf(k); if (!it) return gone();
   const p = product(k), ka = " data-k='" + esc(k) + "'", shops = storeList(), cs = listOf(k, it);
   return {title:it.name, html:
     "<div class='hero'><div class='bigstep'><button data-a='minus'" + ka + " aria-label='Minder'>" + ico("minus") + "</button><b>" + amount(it) + "</b><button data-a='plus'" + ka + " aria-label='Meer'>" + ico("plus") + "</button></div>" +
@@ -1347,7 +1350,7 @@ PAGES.product = () => {
     "<label class='cell'><span class='lbl'>Notitie</span><input class='inl grow' id='noteIn'" + ka + " value='" + esc(it.note) + "' placeholder='bv. merk of rijpheid' enterkeyhint='done'></label></div>" +
     "<div class='group'><label class='cell'><span class='grow'>Schap</span><select id='catSel'" + ka + ">" + CATS.map(c => "<option value='" + c[0] + "'" + (catOf(it.cat) === c[0] ? " selected" : "") + ">" + c[1] + " " + esc(c[2]) + "</option>").join("") + "</select>" + ico("down") + "</label>" +
     (shops.length ? "<label class='cell'><span class='grow'>Op lijst</span><select id='storeSel'" + ka + ">" + (useBs() ? "<option value=''>Boodschappen (maakt niet uit)</option>" : "") + shops.map(s => "<option value='" + esc(s.id) + "'" + (cs === s.id ? " selected" : "") + ">" + esc(s.name) + "</option>").join("") + "</select>" + ico("down") + "</label>" : "") +
-    buyCell(k) + "</div>" +
+    buyCell(pk) + "</div>" +
     "<p class='hint' style='margin:-4px 2px 18px'>Schap, winkel en eenheid worden onthouden voor de volgende keer." + (it.by ? " Toegevoegd door " + esc(it.by) + "." : "") + "</p>" +
     "<div class='group'><button class='cell danger' data-a='del'" + ka + ">Van lijst halen</button>" + (p && p.custom ? "<button class='cell danger' data-a='forget'" + ka + ">Product vergeten</button>" : "") + "</div>"};
 };
@@ -1393,7 +1396,7 @@ function render(force){
     }
   }
   const sub = !!PARENT[route];
-  $("barIn").innerHTML = (sub ? "<button class='ib back' data-a='back' aria-label='Terug'>" + ico("chevL") + "</button>" : "") + "<div class='grow'><h1" + (sub ? " class='sm'" : (P.title || "").length > 13 ? " class='long'" : "") + ">" + (P.titleHtml || esc(P.title)) + "</h1>" + (P.sub ? "<div class='sub'>" + P.sub + "</div>" : "") + "</div>" + (P.act || "");
+  $("barIn").innerHTML = (sub ? "<button class='ib back' data-a='back' aria-label='Terug'>" + ico("chevL") + "</button>" : "") + "<div class='grow'><h1" + (sub ? " class='sm'" : "") + ">" + (P.titleHtml || esc(P.title)) + "</h1>" + (P.sub ? "<div class='sub'>" + P.sub + "</div>" : "") + "</div>" + (P.act || "");
   document.documentElement.style.setProperty("--toph", $("top").offsetHeight + "px");
   const root = rootOf(route); [...$("tabs").children].forEach((b, i) => b.classList.toggle("on", TABS[i][0] === root));
   renderSug();
@@ -1498,7 +1501,7 @@ const ACT = {
   sheetclose:() => closeCard(),
   plus:k => step(k, 1), minus:k => step(k, -1),
   del:k => { back(); removeItem(k); },
-  forget:k => { back(); DB.del("items", k); DB.del("products", k); toast("Product vergeten"); },
+  forget:k => { back(); DB.del("items", k); DB.del("products", pkOf(k)); toast("Product vergeten"); },
   setcat:(k, c) => { const it = S.items[k]; DB.set("items", k, {cat:c}); DB.set("products", k, {name:it.name, cat:c}); },
   setstore:(k, s) => { const it = S.items[k]; DB.set("items", k, {store:s}); DB.set("products", k, {name:it.name, cat:it.cat, store:s}); },
   addq:(k, t) => DB.inc("items", k, "qty", +t.dataset.d),
@@ -1521,13 +1524,13 @@ const ACT = {
   // Toevoegen vanuit Inzicht, met ongedaan maken; nog een tik op het vinkje haalt het weer van de lijst.
   iadd:k => {
     const p = product(k); if (!p) return;
-    if (onList(k)) { const old = S.items[k]; DB.del("items", k); render(true); return toast(p.name + " van de lijst gehaald", "Ongedaan maken", () => { DB.set("items", k, old); render(true); }); }
+    const oid = openId(k); if (oid) { const old = S.items[oid]; DB.del("items", oid); render(true); return toast(p.name + " van de lijst gehaald", "Ongedaan maken", () => { DB.set("items", oid, old); render(true); }); }
     addItem(p.name, undefined, {}, true); render(true);
-    const it = S.items[k]; toast(p.name + " staat op de lijst " + listName(it && listOf(k, it) ? "s:" + listOf(k, it) : "boodschappen"), "Ongedaan maken", () => { DB.del("items", k); render(true); });
+    const it = S.items[openId(k)]; toast(p.name + " staat op de lijst " + listName(it && listOf(k, it) ? "s:" + listOf(k, it) : "boodschappen"), "Ongedaan maken", () => { const oid = openId(k); if (oid) DB.del("items", oid); render(true); });
   },
   iaddall:() => {
     const ks = soonList(1).filter(r => !onList(r.k)).map(r => r.k); ks.forEach(k => addItem(product(k).name, undefined, {}, true)); render(true);
-    toast(nProd(ks.length) + " op de lijsten gezet", "Ongedaan maken", () => { ks.forEach(k => DB.del("items", k)); render(true); });
+    toast(nProd(ks.length) + " op de lijsten gezet", "Ongedaan maken", () => { ks.forEach(k => { const oid = openId(k); if (oid) DB.del("items", oid); }); render(true); });
   },
   istat:k => openCard("istat", k),
   pinzicht:k => openCard("prodinzicht", k),
@@ -1540,9 +1543,9 @@ const ACT = {
   },
   pforget:k => {
     const p = product(k); if (!p) return;
-    const old = S.products[k], it = S.items[k];
-    closeCard(); DB.del("products", k); if (it) DB.del("items", k); render(true);
-    toast(p.name + (CATALOG[k] ? ": gegevens gewist" : " vergeten"), "Ongedaan maken", () => { if (old) DB.set("products", k, old); if (it) DB.set("items", k, it); render(true); });
+    const old = S.products[k], its = Object.entries(S.items).filter(([id]) => pkOf(id) === k);
+    closeCard(); DB.del("products", k); its.forEach(([id]) => DB.del("items", id)); render(true);
+    toast(p.name + (CATALOG[k] ? ": gegevens gewist" : " vergeten"), "Ongedaan maken", () => { if (old) DB.set("products", k, old); its.forEach(([id, v]) => DB.set("items", id, v)); render(true); });
   },
   pfilter:() => {},
   shop:() => {
@@ -2018,10 +2021,17 @@ function buyLog(p){
   return L.filter(e => e && e.t).slice().sort((a, b) => a.t - b.t);
 }
 function recordBuy(k, it, undo){
-  const p = S.products[k] || {}, now = Date.now(), log = buyLog(p), last = log[log.length - 1];
+  const iid = k; k = pkOf(k); const p = S.products[k] || {}, now = Date.now(), log = buyLog(p), last = log[log.length - 1];
   // Meerdere tikken binnen 12 uur tellen als een aankoop; uitvinken binnen 12 uur haalt hem weer weg.
-  if (undo) { if (!last || now - last.t > DAY / 2) return; log.pop(); }
-  else { const a = amtBase(it), e = {t:now, q:a.q, u:a.u}; if (last && now - last.t < DAY / 2) log[log.length - 1] = e; else log.push(e); }
+  // Hetzelfde product op twee lijsten in een ronde telt als een aankoop met de hoeveelheden opgeteld;
+  // een exemplaar weer uitvinken haalt alleen dat deel eraf.
+  const a = amtBase(it), others = Object.entries(S.items).some(([id, v]) => pkOf(id) === k && id !== iid && v.checked);
+  if (undo) {
+    if (!last || now - last.t > DAY / 2) return;
+    if (others && last.u === a.u && last.q > a.q) last.q -= a.q; else if (!others) log.pop();
+  }
+  else if (last && now - last.t < DAY / 2) { if (others && last.u === a.u) last.q = (last.q || 0) + a.q; else log[log.length - 1] = {t:now, q:a.q, u:a.u}; }
+  else log.push({t:now, q:a.q, u:a.u});
   DB.set("products", k, {name:it.name, cat:it.cat, log:log.slice(-80), buys:log.slice(-6).map(e => e.t)});
 }
 const median = a => { const s = a.slice().sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -2054,7 +2064,9 @@ function predictAll(){ return Object.keys(S.products).map(predict).filter(r => r
 // Wat binnenkort nodig is (vanaf 3 aankopen), los van de winkel.
 function soonList(within){ return predictAll().filter(r => r.n >= 3 && r.days && r.left <= within && !(S.products[r.k].snooze > Date.now())).sort((a, b) => a.left - b.left); }
 // Koopritme-chips op de lijst: wat nu nodig is en nog op geen enkele lijst staat.
-function dueList(){ return soonList(1).filter(r => !S.items[r.k]).map(r => ({...product(r.k), r})).slice(0, 6); }
+function dueList(){ return soonList(1).filter(r => !onList(r.k)).map(r => ({...product(r.k), r})).slice(0, 6); }
+// Het item-id van dit product op de lijst die nu open staat.
+function curItemId(k){ const c = curList(); if (isX(c)) return null; const sid = c === "boodschappen" ? "" : c.slice(2); return Object.keys(S.items).find(id => pkOf(id) === k && listOf(id, S.items[id]) === sid) || null; }
 function buyCell(k){
   const r = predict(k);
   const sub = !r ? "Nog niet gekocht via de app" : !r.days ? "1 keer gekocht, voorspelling vanaf de tweede keer" : everyTxt(r.rhythm) + " · volgende keer " + leftTxt(r);
@@ -2135,19 +2147,25 @@ PAGES.istat = () => {
 // Twee producten die hetzelfde zijn samenvoegen: aankopen, tellingen, lijst en templates gaan over naar het doel.
 function mergeProducts(s, d){
   const src = product(s), dst = product(d), ps = S.products[s] || {}, pd = S.products[d] || {};
-  const undo = {ps:S.products[s], pd:S.products[d], is:S.items[s], id:S.items[d], tpl:JSON.parse(JSON.stringify(S.templates))};
+  const items = JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(S.items).filter(([id]) => pkOf(id) === s || pkOf(id) === d))));
+  const undo = {ps:S.products[s], pd:S.products[d], items, tpl:JSON.parse(JSON.stringify(S.templates))};
   const log = buyLog(ps).concat(buyLog(pd)).sort((a, b) => a.t - b.t), merged = [];
   log.forEach(e => { const l = merged[merged.length - 1]; if (l && e.t - l.t < DAY / 2) { if (l.u === e.u) l.q = (l.q || 0) + (e.q || 0); } else merged.push({...e}); });
   DB.set("products", d, {name:dst.name, cat:pd.cat || dst.cat || ps.cat, store:pd.store || ps.store || "", unit:pd.unit || ps.unit || "", dq:pd.dq || ps.dq || 0,
     n:(ps.n || 0) + (pd.n || 0), last:Math.max(ps.last || 0, pd.last || 0), log:merged.slice(-80), buys:merged.slice(-6).map(e => e.t)});
-  const is = S.items[s];
-  if (is) { if (S.items[d] && !S.items[d].checked) DB.set("items", d, {qty:(+S.items[d].qty || 1) + (+is.qty || 1)}); else DB.set("items", d, {...is, name:dst.name, cat:S.items[d] ? S.items[d].cat : (pd.cat || dst.cat || is.cat)}); DB.del("items", s); }
+  // Elk exemplaar op een lijst gaat over naar het doel op dezelfde lijst; staat het doel daar al, dan telt het aantal op.
+  Object.keys(S.items).filter(id => pkOf(id) === s).forEach(id => {
+    const is = S.items[id], sid = listOf(id, is), tid = Object.keys(S.items).find(x => pkOf(x) === d && listOf(x, S.items[x]) === sid);
+    if (tid && !S.items[tid].checked) DB.set("items", tid, {qty:(+S.items[tid].qty || 1) + (+is.qty || 1)});
+    else DB.set("items", tid || (S.items[d] ? d + "@" + (sid || "bs") : d), {...is, name:dst.name, cat:pd.cat || dst.cat || is.cat});
+    DB.del("items", id);
+  });
   Object.entries(S.templates).forEach(([id, t]) => { if ((t.items || []).some(i => keyOf(i.name) === s)) DB.set("templates", id, {...t, items:t.items.map(i => keyOf(i.name) === s ? {...i, name:dst.name} : i)}); });
   DB.del("products", s);
   closeCard(); render(true);
   toast(src.name + " samengevoegd met " + dst.name, "Ongedaan maken", () => {
     if (undo.ps) DB.set("products", s, undo.ps); if (undo.pd) DB.set("products", d, undo.pd); else DB.del("products", d);
-    if (undo.is) DB.set("items", s, undo.is); if (undo.id) DB.set("items", d, undo.id); else if (undo.is) DB.del("items", d);
+    Object.keys(S.items).filter(id => pkOf(id) === d && !undo.items[id]).forEach(id => DB.del("items", id)); Object.entries(undo.items).forEach(([id, v]) => DB.set("items", id, v));
     Object.entries(undo.tpl).forEach(([id, t]) => DB.set("templates", id, t)); render(true);
   });
 }
@@ -2171,7 +2189,7 @@ function manageHtml(k){
 PAGES.prodinzicht = () => {
   const k = args.prodinzicht, p = product(k); if (!p) return {title:"", html:""};
   const r = predict(k), now = Date.now();
-  const add = onList(k) ? "<button class='btn sec wide' data-a='iadd' data-k='" + esc(k) + "'>" + ico("check") + "Staat op de lijst " + esc(listName(listOf(k, S.items[k]) ? "s:" + listOf(k, S.items[k]) : "boodschappen")) + ", weghalen</button>" : "<button class='btn wide' data-a='iadd' data-k='" + esc(k) + "'>" + ico("plus") + "Op de lijst zetten</button>";
+  const oi = openId(k), add = oi ? "<button class='btn sec wide' data-a='iadd' data-k='" + esc(k) + "'>" + ico("check") + "Staat op de lijst " + esc(listName(listOf(oi, S.items[oi]) ? "s:" + listOf(oi, S.items[oi]) : "boodschappen")) + ", weghalen</button>" : "<button class='btn wide' data-a='iadd' data-k='" + esc(k) + "'>" + ico("plus") + "Op de lijst zetten</button>";
   if (!r) return {title:p.name, html:"<p class='hint'>" + esc(p.name) + " is nog niet via de app gekocht. Vink het af tijdens het winkelen, dan houdt de app het koopgedrag bij.</p>" + add + manageHtml(k)};
   const span = Math.max(60, Math.min(365, (now - r.log[0].t) / DAY + 7)), x = t => 8 + (1 - (now - t) / DAY / span) * 284;
   const maxQ = Math.max(...r.log.map(e => e.q || 1));
