@@ -44,6 +44,10 @@ h1,h2,h3,p{margin:0}
 .top.scrolled{border-bottom-color:var(--line)}
 .barin{display:flex;align-items:center;gap:6px;min-height:56px;padding:6px 0}
 .barin h1{font-size:22px;font-weight:600;letter-spacing:-.015em;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Lange lijstnamen: kleiner en desnoods over twee regels, nooit afgekapt */
+.barin h1.long{font-size:19px;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.15}
+.barin h1 .ttl{display:flex;min-width:0}.barin h1 .tn{min-width:0;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.barin h1.long:has(.ttl){display:block}
 .barin h1.sm{font-size:17px;letter-spacing:-.005em}
 .sub{font-size:13.5px;color:var(--mute);margin-top:1px}
 .sub button{color:var(--acc)}
@@ -257,6 +261,8 @@ body:not(.shop) .row .rin .rmain{padding-left:14px}
 .field{flex:1;min-width:0;width:100%;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--surface);padding:0 14px;outline:0;transition:border-color .15s,box-shadow .15s}
 .field:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--soft)}
 .line{display:flex;gap:8px;align-items:center}
+.cell.col{flex-direction:column;align-items:stretch;gap:2px}.cell.col .cs{white-space:normal}.cell.col .line .btn{flex:none}
+.cell[hidden]{display:none}
 .line.center{justify-content:center;flex-wrap:wrap}
 .check{display:flex;align-items:center;gap:10px;font-size:14.5px;margin:12px 2px 0}
 .check input{width:18px;height:18px;accent-color:var(--acc)}
@@ -726,7 +732,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "55";
+const APP_V = "57";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -953,7 +959,7 @@ function renderX(l, shop, cur){
     h += "<h3 class='ch'>In het karretje<span class='n'>" + done.length + "</span></h3><div class='group'>" + done.map(([k, v]) => rowHtml(k, v, null, null, true)).join("") + "</div>";
   }
   $("list").innerHTML = h; flashKey = null;
-  return {title:shop ? "Winkelen bij " + name : name, sub:shop && all.length ? done.length + " van " + all.length + " gepakt" : "", act:shop ? "<button class='ibb pri' data-a='finish' aria-label='Klaar met winkelen'>" + ico("check") + "</button>" : listBtnHtml(cur) + (all.length ? eyeBtn() : "") + (Object.values(S.items).some(v => !v.checked) || Object.values(S.xitems).some(v => !v.checked) ? "<button class='ibb pri' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
+  return {title:shop ? "Winkelen bij " + name : name, sub:shop && all.length ? done.length + " van " + all.length + " gepakt" : "", act:shop ? "<button class='ibb pri' data-a='finish' aria-label='Klaar met winkelen'>" + ico("check") + "</button>" : listBtnHtml(cur) + eyeBtn() + (Object.values(S.items).some(v => !v.checked) || Object.values(S.xitems).some(v => !v.checked) ? "<button class='ibb pri' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
 }
 // Lijstkeuze: icoon rechtsboven, opent een klein menu met alle lijsten.
 const openCount = id => (isX(id) ? xOf(id) : listEntries(id)).filter(([, v]) => !v.checked).length;
@@ -1044,7 +1050,7 @@ function renderTour(){
   if (cart.length) h += "<h3 class='ch'>In het karretje<span class='n'>" + cart.length + "</span></h3><div class='group'>" + cart.map(([[k, v], s]) => rowHtml(k, v, null, null, s.type === "x")).join("") + "</div>";
   $("list").innerHTML = h; flashKey = null;
   const ci = cur ? stops.indexOf(cur) : 0;
-  return {titleHtml:cur ? "<span class='ttl'>" + logoHtml(cur.name, cur.logo, 26) + esc(cur.name) + "</span>" : "Winkelen",
+  return {titleHtml:cur ? "<span class='ttl'>" + logoHtml(cur.name, cur.logo, 26) + "<span class='tn'>" + esc(cur.name) + "</span></span>" : "Winkelen",
     sub:(stops.length > 1 ? "Winkel " + (ci + 1) + " van " + stops.length + " · " : "") + done.length + " van " + all.length + " gepakt",
     act:"<button class='ibb' data-a='tourEdit' aria-label='Winkels wijzigen'>" + ico("pin") + "</button><button class='ibb pri' data-a='finish' aria-label='Klaar met winkelen'>" + ico("check") + "</button>"};
 }
@@ -1086,7 +1092,8 @@ function drawStart(){
 }
 
 /* ---------- meekijken: live zien hoe de ander winkelt, zonder iets te kunnen wijzigen ---------- */
-const eyeBtn = () => "<button class='ibb' data-a='watch' aria-label='Meekijken'>" + ico("eye") + "</button>";
+// Meekijken alleen tonen als iemand anders nu aan het winkelen is; dan met een stipje als teken dat het live is.
+const eyeBtn = () => { const t = S.state.tour || {}; return t.active && t.by && t.by !== me() ? "<button class='ibb dot' data-a='watch' aria-label='Meekijken met " + esc(String(t.by).split(" ")[0]) + "'>" + ico("eye") + "</button>" : ""; };
 let watchSeen = null, watchTimer = 0, flashQ = [], flashBusy = false;
 function setWatch(on, quiet){
   if (document.body.classList.contains("watch") === on) return;
@@ -1179,7 +1186,7 @@ function renderList(){
   swipeReset();
   let shop = document.body.classList.contains("shop");
   const cur = curList(), nm = listName(cur);
-  $("q").placeholder = cur === "boodschappen" ? "Voeg toe, bv. 2 paprika" : "Voeg toe aan " + nm;
+  $("q").placeholder = cur === "boodschappen" ? "Voeg toe, bv. 2 paprika" : nm.length > 16 ? "Product toevoegen" : "Voeg toe aan " + nm;
   $("demo").style.display = cur === "boodschappen" ? "" : "none";
   if (document.body.classList.contains("watch")) return renderWatch(cur);
   if (shop) { if (tourOn()) return renderTour(); setShop(false, true); shop = false; }
@@ -1204,8 +1211,8 @@ function renderList(){
   }
   $("list").innerHTML = h; flashKey = null;
   const anyOpen = Object.values(S.items).some(v => !v.checked) || Object.values(S.xitems).some(v => !v.checked);
-  return {title:nm, titleHtml:st ? "<span class='ttl'>" + logoHtml(st.name, st.logo, 26) + esc(st.name) + "</span>" : "",
-    sub:"", act:listBtnHtml(cur) + (all.length ? eyeBtn() : "") + (anyOpen ? "<button class='ibb pri' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
+  return {title:nm, titleHtml:st ? "<span class='ttl'>" + logoHtml(st.name, st.logo, 26) + "<span class='tn'>" + esc(st.name) + "</span></span>" : "",
+    sub:"", act:listBtnHtml(cur) + eyeBtn() + (anyOpen ? "<button class='ibb pri' data-a='shop' aria-label='Winkelen'>" + ico("cart") + "</button>" : "")};
 }
 
 /* ---------- pagina's ---------- */
@@ -1251,7 +1258,7 @@ PAGES["vorige-lijsten"] = () => {
 PAGES.meer = () => {
   const n = Object.keys(S.history).length;
   return {title:"Meer", html:
-    "<div class='group'>" + navCell("lijsten", undefined, "Lijsten en winkels", esc(storeList().map(s => s.name).concat(Object.values(S.xlists).map(l => l.name)).join(", ")), "list") + navCell("vorige-lijsten", undefined, "Vorige lijsten", n ? n + " bewaard" : "Nog niets bewaard", "clock") +
+    "<div class='group'>" + navCell("lijsten", undefined, "Lijsten en winkels", esc(storeList().map(s => s.name).concat(Object.values(S.xlists).map(l => l.name)).join(", ")), "list") + navCell("vorige-lijsten", undefined, "Vorige lijsten", n ? n + " bewaard" : "Nog niets bewaard", "clock") + navCell("producten", undefined, "Producten", "Samenvoegen of vergeten", "tag") +
     "<button class='cell' data-a='share'>" + ico("share") + "<span class='grow'><span class='ct'>Lijst delen als tekst</span></span></button></div>" +
     "<div class='group'>" + navCell("instellingen", undefined, "Instellingen", "Weergave en account", "sliders") + "</div>"};
 };
@@ -1386,7 +1393,7 @@ function render(force){
     }
   }
   const sub = !!PARENT[route];
-  $("barIn").innerHTML = (sub ? "<button class='ib back' data-a='back' aria-label='Terug'>" + ico("chevL") + "</button>" : "") + "<div class='grow'><h1" + (sub ? " class='sm'" : "") + ">" + (P.titleHtml || esc(P.title)) + "</h1>" + (P.sub ? "<div class='sub'>" + P.sub + "</div>" : "") + "</div>" + (P.act || "");
+  $("barIn").innerHTML = (sub ? "<button class='ib back' data-a='back' aria-label='Terug'>" + ico("chevL") + "</button>" : "") + "<div class='grow'><h1" + (sub ? " class='sm'" : (P.title || "").length > 13 ? " class='long'" : "") + ">" + (P.titleHtml || esc(P.title)) + "</h1>" + (P.sub ? "<div class='sub'>" + P.sub + "</div>" : "") + "</div>" + (P.act || "");
   document.documentElement.style.setProperty("--toph", $("top").offsetHeight + "px");
   const root = rootOf(route); [...$("tabs").children].forEach((b, i) => b.classList.toggle("on", TABS[i][0] === root));
   renderSug();
@@ -1525,6 +1532,19 @@ const ACT = {
   istat:k => openCard("istat", k),
   pinzicht:k => openCard("prodinzicht", k),
   iper:k => { args.iper = k; render(true); },
+  pmerge:k => {
+    const inp = $("mergeTo"), name = inp && inp.value.trim(); if (!name) return inp && inp.focus();
+    const d = keyOf(name); if (d === k) return toast("Kies een ander product");
+    if (!CATALOG[d] && !S.products[d]) return toast(name + " is geen bekend product");
+    mergeProducts(k, d);
+  },
+  pforget:k => {
+    const p = product(k); if (!p) return;
+    const old = S.products[k], it = S.items[k];
+    closeCard(); DB.del("products", k); if (it) DB.del("items", k); render(true);
+    toast(p.name + (CATALOG[k] ? ": gegevens gewist" : " vergeten"), "Ongedaan maken", () => { if (old) DB.set("products", k, old); if (it) DB.set("items", k, it); render(true); });
+  },
+  pfilter:() => {},
   shop:() => {
     if (document.body.classList.contains("shop")) { setShop(false); return; }
     if (tourOn()) {
@@ -1628,6 +1648,7 @@ document.addEventListener("click", e => {
   ACT[t.dataset.a](t.dataset.k, t, e);
 });
 document.addEventListener("input", e => {
+  if (e.target.id === "pq") { args.pq = e.target.value; const q = keyOf(e.target.value); document.querySelectorAll("#page [data-a=pinzicht]").forEach(c => c.hidden = !!q && !c.dataset.k.includes(q)); return; }
   if (e.target.id !== "densIn") return;
   const d = DENS[+e.target.value] || "a"; pref.set("dens", d); document.documentElement.dataset.dens = d;
   e.target.parentElement.querySelectorAll(".ticks span").forEach((s, i) => s.classList.toggle("on", i === +e.target.value));
@@ -2111,12 +2132,47 @@ PAGES.istat = () => {
     "<h3 class='ch'>Daarna</h3><div class='group'>" + counts.slice(1, 5).map(({r, n}) => "<div class='cell'><span class='grow'>" + esc(product(r.k).name) + "</span><span class='val'>" + n + " keer</span></div>").join("") + "</div>" +
     "<button class='btn sec wide' data-a='pinzicht' data-k='" + esc(top.r.k) + "' style='margin-top:12px'>Alles over " + esc(nm) + "</button>"};
 };
+// Twee producten die hetzelfde zijn samenvoegen: aankopen, tellingen, lijst en templates gaan over naar het doel.
+function mergeProducts(s, d){
+  const src = product(s), dst = product(d), ps = S.products[s] || {}, pd = S.products[d] || {};
+  const undo = {ps:S.products[s], pd:S.products[d], is:S.items[s], id:S.items[d], tpl:JSON.parse(JSON.stringify(S.templates))};
+  const log = buyLog(ps).concat(buyLog(pd)).sort((a, b) => a.t - b.t), merged = [];
+  log.forEach(e => { const l = merged[merged.length - 1]; if (l && e.t - l.t < DAY / 2) { if (l.u === e.u) l.q = (l.q || 0) + (e.q || 0); } else merged.push({...e}); });
+  DB.set("products", d, {name:dst.name, cat:pd.cat || dst.cat || ps.cat, store:pd.store || ps.store || "", unit:pd.unit || ps.unit || "", dq:pd.dq || ps.dq || 0,
+    n:(ps.n || 0) + (pd.n || 0), last:Math.max(ps.last || 0, pd.last || 0), log:merged.slice(-80), buys:merged.slice(-6).map(e => e.t)});
+  const is = S.items[s];
+  if (is) { if (S.items[d] && !S.items[d].checked) DB.set("items", d, {qty:(+S.items[d].qty || 1) + (+is.qty || 1)}); else DB.set("items", d, {...is, name:dst.name, cat:S.items[d] ? S.items[d].cat : (pd.cat || dst.cat || is.cat)}); DB.del("items", s); }
+  Object.entries(S.templates).forEach(([id, t]) => { if ((t.items || []).some(i => keyOf(i.name) === s)) DB.set("templates", id, {...t, items:t.items.map(i => keyOf(i.name) === s ? {...i, name:dst.name} : i)}); });
+  DB.del("products", s);
+  closeCard(); render(true);
+  toast(src.name + " samengevoegd met " + dst.name, "Ongedaan maken", () => {
+    if (undo.ps) DB.set("products", s, undo.ps); if (undo.pd) DB.set("products", d, undo.pd); else DB.del("products", d);
+    if (undo.is) DB.set("items", s, undo.is); if (undo.id) DB.set("items", d, undo.id); else if (undo.is) DB.del("items", d);
+    Object.entries(undo.tpl).forEach(([id, t]) => DB.set("templates", id, t)); render(true);
+  });
+}
+// Alle producten waar jullie eigen gegevens van hebben: eigen producten en alles wat al eens gebruikt is.
+PAGES.producten = () => {
+  const q = keyOf(args.pq || ""), all = Object.keys(S.products).map(k => product(k)).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name, "nl"));
+  const shown = all;
+  const sub = p => { const r = predict(p.k); return (CATALOG[p.k] ? "" : "Eigen product · ") + (r ? r.n + " keer gekocht" : "nog niet gekocht"); };
+  return {title:"Producten", html:"<p class='hint' style='margin-top:0'>Tik op een product om het samen te voegen met een ander product of te vergeten. Handig als je per ongeluk twee namen voor hetzelfde gebruikt, zoals croissantjes en croissants.</p>" +
+    "<input id='pq' class='field' type='search' placeholder='Zoek een product' value='" + esc(args.pq || "") + "' autocomplete='off'>" +
+    (shown.length ? "<div class='group' style='margin-top:10px'>" + shown.map(p => "<button class='cell' data-a='pinzicht' data-k='" + esc(p.k) + "'" + (q && !p.k.includes(q) ? " hidden" : "") + "><span class='grow'><span class='ct'>" + esc(p.name) + "</span><span class='cs'>" + esc(sub(p)) + "</span></span>" + ico("chevR") + "</button>").join("") + "</div>" : "<p class='hint'>Niets gevonden.</p>")};
+};
+function manageHtml(k){
+  const names = [...new Set(Object.keys(CATALOG).concat(Object.keys(S.products)).filter(x => x !== k).map(x => product(x)).filter(Boolean).map(p => p.name))].sort((a, b) => a.localeCompare(b, "nl"));
+  return "<h3 class='ch'>Beheren</h3><div class='group'><div class='cell col'><span class='ct'>Samenvoegen met</span><span class='cs'>Aankopen, lijst en templates gaan over naar het andere product; dit product verdwijnt.</span>" +
+    "<div class='line' style='margin-top:8px'><input id='mergeTo' class='field grow' list='mergeList' placeholder='Ander product' autocomplete='off'><button class='btn' data-a='pmerge' data-k='" + esc(k) + "'>Samenvoegen</button></div>" +
+    "<datalist id='mergeList'>" + names.map(n => "<option value='" + esc(n) + "'>").join("") + "</datalist></div>" +
+    "<button class='cell danger' data-a='pforget' data-k='" + esc(k) + "'>" + (CATALOG[k] ? "Koopgegevens wissen" : "Product vergeten") + "</button></div>";
+}
 // Detail per product: tijdlijn van aankopen en de voorspelling.
 PAGES.prodinzicht = () => {
   const k = args.prodinzicht, p = product(k); if (!p) return {title:"", html:""};
   const r = predict(k), now = Date.now();
   const add = onList(k) ? "<button class='btn sec wide' data-a='iadd' data-k='" + esc(k) + "'>" + ico("check") + "Staat op de lijst " + esc(listName(listOf(k, S.items[k]) ? "s:" + listOf(k, S.items[k]) : "boodschappen")) + ", weghalen</button>" : "<button class='btn wide' data-a='iadd' data-k='" + esc(k) + "'>" + ico("plus") + "Op de lijst zetten</button>";
-  if (!r) return {title:p.name, html:"<p class='hint'>" + esc(p.name) + " is nog niet via de app gekocht. Vink het af tijdens het winkelen, dan houdt de app het koopgedrag bij.</p>" + add};
+  if (!r) return {title:p.name, html:"<p class='hint'>" + esc(p.name) + " is nog niet via de app gekocht. Vink het af tijdens het winkelen, dan houdt de app het koopgedrag bij.</p>" + add + manageHtml(k)};
   const span = Math.max(60, Math.min(365, (now - r.log[0].t) / DAY + 7)), x = t => 8 + (1 - (now - t) / DAY / span) * 284;
   const maxQ = Math.max(...r.log.map(e => e.q || 1));
   let svg = "<svg class='tl' viewBox='0 0 300 64' aria-hidden='true'><line x1='8' y1='34' x2='292' y2='34'/>";
@@ -2126,7 +2182,7 @@ PAGES.prodinzicht = () => {
   const d = t => new Date(t).toLocaleDateString("nl-NL", {weekday:"short", day:"numeric", month:"short"});
   const cell = (l, v) => "<div class='cell'><span class='grow'>" + l + "</span><span class='val'>" + v + "</span></div>";
   let h = "<div class='ihero'>" + (r.days ? "<span class='lbl'>Volgende keer waarschijnlijk</span><b>" + (r.left < .5 ? "Nu nodig" : d(r.next)) + "</b><span class='sub'>" + (r.left < .5 ? confTxt(r.conf) : "tussen " + (r.next - r.spread * DAY <= now ? "nu" : d(r.next - r.spread * DAY)) + " en " + d(r.next + r.spread * DAY) + " · " + confTxt(r.conf)) + "</span>" : "<span class='lbl'>Nog geen voorspelling</span><b>1 keer gekocht</b><span class='sub'>Na de volgende aankoop schat de app wanneer het weer nodig is.</span>") + "</div>";
-  h += svg + "<div class='group'>" + cell("Gekocht", r.n + " keer") + (r.days ? cell("Gemiddeld", everyTxt(r.rhythm)) : "") + (r.avgQ && r.unit ? cell("Meestal per keer", qtyTxt(r.avgQ, r.unit)) : r.avgQ ? cell("Meestal per keer", qtyTxt(r.avgQ, "")) : "") + cell("Laatst", d(r.last) + ", " + agoTxt(r.since)) + "</div>" + add;
+  h += svg + "<div class='group'>" + cell("Gekocht", r.n + " keer") + (r.days ? cell("Gemiddeld", everyTxt(r.rhythm)) : "") + (r.avgQ && r.unit ? cell("Meestal per keer", qtyTxt(r.avgQ, r.unit)) : r.avgQ ? cell("Meestal per keer", qtyTxt(r.avgQ, "")) : "") + cell("Laatst", d(r.last) + ", " + agoTxt(r.since)) + "</div>" + add + manageHtml(k);
   return {title:p.name, html:h};
 };
 // Demo: een paar maanden aan aankopen, zodat Inzicht meteen iets laat zien.
