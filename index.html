@@ -116,6 +116,12 @@ html,body{overscroll-behavior-x:none}
 html,body{overflow-x:clip}
 #pgList{position:relative}
 .ghost{position:absolute;pointer-events:none}
+/* Logostrook bij vegen */
+.lstrip{position:absolute;height:0;pointer-events:none;opacity:0;transition:opacity .28s ease;z-index:3}
+.lstrip.on{opacity:1;transition:opacity .16s ease}
+.lstrip i{position:absolute;left:50%;top:0;margin-left:-20px;display:block;will-change:transform,opacity}
+.lstrip i .lg{display:grid;box-shadow:0 1px 4px rgba(20,35,60,.14),0 0 0 1px var(--line)}
+#barIn h1{transition:opacity .28s ease}body.stripon #barIn h1{opacity:0;transition:opacity .12s ease}
 /* Inzicht */
 .itiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 6px}
 .itile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 10px;display:flex;flex-direction:column;gap:3px;min-width:0}
@@ -157,7 +163,7 @@ svg.tl circle{fill:color-mix(in srgb,var(--acc) 70%,transparent)}svg.tl text{fon
 .offline{font-size:13px;color:var(--mute);text-align:center;padding:6px 0 0}
 .shead{display:flex;align-items:center;gap:10px;margin:30px 2px -8px;padding-top:22px;border-top:1px solid var(--line);font-size:17px;font-weight:600;letter-spacing:-.005em}
 .shead.first{border-top:0;padding-top:0;margin-top:22px}
-.lg{border-radius:50%;flex:none;object-fit:cover;background:#fff;box-shadow:0 0 0 1px var(--line)}
+.lg{border-radius:28%;flex:none;object-fit:cover;background:#fff;box-shadow:0 0 0 1px var(--line)}
 .lgf{display:grid;place-items:center;color:#fff;font-weight:600;box-shadow:none;line-height:1}
 .cell .lg+.tb{margin-left:4px}
 .popi .lg{margin-right:-2px}
@@ -735,7 +741,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "60";
+const APP_V = "61";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -1740,6 +1746,77 @@ function switchList(k, dir){
   if (dir) return;
   m.classList.remove("swap"); void m.offsetWidth; m.classList.add("swap");
 }
+// Logostrook linksboven: tijdens vegen (en bij schuiven over de titel) alle lijsten als logo's op een rij,
+// het midden het grootst, naar de zijkanten kleiner en vager. Na een seconde terug naar logo en naam.
+const STRIP = (() => {
+  let el = null, keys = [], pos = 0, timer = 0, raf = 0, shown = false;
+  const SP = 44;
+  const html = k => { const st = k.startsWith("s:") && storeList().find(s => "s:" + s.id === k), x = !k.startsWith("s:") && S.xlists[k];
+    return st ? logoHtml(st.name, st.logo, 40) : "<span class='lg lgnone' style='width:40px;height:40px'>" + ico(x ? "list" : "cart") + "</span>"; };
+  const build = () => {
+    const ls = allLists().map(l => l[0]);
+    if (el && ls.join() === keys.join() && el.isConnected) return;
+    keys = ls; if (!el) { el = document.createElement("div"); el.className = "lstrip"; el.setAttribute("aria-hidden", "true"); }
+    el.innerHTML = keys.map(k => "<i>" + html(k) + "</i>").join("");
+    $("top").appendChild(el);
+  };
+  const place = () => {
+    const g = $("barIn").querySelector(".grow") || $("barIn"), r = g.getBoundingClientRect(), tr = $("top").getBoundingClientRect(), h = $("barIn").querySelector("h1");
+    const hr = h ? h.getBoundingClientRect() : r;
+    el.style.left = (r.left - tr.left) + "px"; el.style.width = r.width + "px"; el.style.top = (hr.top - tr.top + hr.height / 2) + "px";
+  };
+  const paint = () => {
+    [...el.children].forEach((c, j) => {
+      const d = j - pos, a = Math.abs(d), sc = Math.max(.42, 1 - .2 * a), x = Math.sign(d) * (a * SP - a * a * 3.2);
+      c.style.transform = "translate3d(" + x.toFixed(1) + "px,-50%,0) scale(" + sc.toFixed(3) + ")";
+      c.style.opacity = a > 3.4 ? "0" : String(Math.max(0, 1 - a * .3).toFixed(3));
+      c.style.zIndex = String(10 - Math.round(a));
+    });
+  };
+  const show = p => {
+    build(); clearTimeout(timer); cancelAnimationFrame(raf);
+    if (!shown) { place(); shown = true; document.body.classList.add("stripon"); el.classList.add("on"); }
+    pos = Math.max(-.6, Math.min(keys.length - .4, p)); paint();
+  };
+  const to = (p, ms) => {
+    if (!shown) return; cancelAnimationFrame(raf);
+    const from = pos, t0 = performance.now(), ease = t => 1 - Math.pow(1 - t, 3);
+    const step = now => { const t = Math.min(1, (now - t0) / ms); pos = from + (p - from) * ease(t); paint(); if (t < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+  };
+  const hide = delay => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (!el) return; el.classList.remove("on"); document.body.classList.remove("stripon"); shown = false; }, delay || 0);
+  };
+  return {show, to, hide, get pos(){ return pos; }, get keys(){ return keys; }, get shown(){ return shown; }};
+})();
+// Met de vinger over de titel schuiven: snel door alle lijsten bladeren en loslaten waar je wilt stoppen.
+(() => {
+  let on = false, lock = null, x0 = 0, y0 = 0, p0 = 0, tgt = null;
+  const SCRUB = 30;
+  const ok = e => route === "lijst" && !document.body.classList.contains("shop") && !document.body.classList.contains("watch") && !$("modalHost").firstChild && !popOpen() && !psheet && e.target.closest("#barIn .grow");
+  function move(e){
+    if (!on) return;
+    const dx = e.touches[0].clientX - x0, dy = e.touches[0].clientY - y0;
+    if (lock === null && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) { lock = Math.abs(dx) > Math.abs(dy) ? "x" : "y"; if (lock === "x") { x0 = e.touches[0].clientX; STRIP.show(p0); } }
+    if (lock === "x") STRIP.show(p0 - (e.touches[0].clientX - x0) / SCRUB);
+  }
+  function end(){
+    if (tgt) { tgt.removeEventListener("touchmove", move); tgt.removeEventListener("touchend", end); tgt.removeEventListener("touchcancel", end); tgt = null; }
+    if (!on) return; on = false; if (lock !== "x") return;
+    swallowUntil = Date.now() + 350;
+    const keys = STRIP.keys, n = Math.max(0, Math.min(keys.length - 1, Math.round(STRIP.pos)));
+    STRIP.to(n, 220);
+    if (keys[n] && keys[n] !== curList()) switchList(keys[n]);
+    STRIP.hide(1200);
+  }
+  document.addEventListener("touchstart", e => {
+    on = e.touches.length === 1 && !!ok(e); if (!on) return;
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; lock = null;
+    p0 = allLists().map(l => l[0]).indexOf(curList());
+    tgt = e.target; tgt.addEventListener("touchmove", move, {passive:true}); tgt.addEventListener("touchend", end, {passive:true}); tgt.addEventListener("touchcancel", end, {passive:true});
+  }, {passive:true});
+})();
 let swipeReset = () => {};
 // Vegen naar links of rechts in een gewone lijst: de volgende of vorige lijst schuift er als echte pagina naast mee,
 // en de titel bovenin (logo en naam) schuift ook mee. Niet tijdens winkelen of meekijken.
@@ -1760,7 +1837,7 @@ let swipeReset = () => {};
     return [html, title, off];
   };
   const firstVis = root => [...root.querySelectorAll("#list *")].find(el => el.offsetHeight > 0 && !el.closest(".ghost") === !root.classList.contains("ghost"));
-  const clearGhost = () => { if (gh) gh.remove(); if (tg) tg.remove(); gh = tg = null; ghKey = null; ghSide = 0; const t = h1(); if (t) { t.style.transform = t.style.opacity = t.style.transition = ""; } };
+  const clearGhost = () => { if (gh) gh.remove(); if (tg) tg.remove(); gh = tg = null; ghKey = null; ghSide = 0; };
   const ghost = (k, side) => {
     if (k === ghKey && side === ghSide) return;
     clearGhost(); if (!k) return;
@@ -1771,15 +1848,11 @@ let swipeReset = () => {};
     // Precies dezelfde hoogte als de echte lijst straks, zodat er bij het loslaten niets verspringt.
     const f = firstVis(gh); if (f) gh.style.top = (parseFloat(gh.style.top) + off - f.getBoundingClientRect().top) + "px";
     const t = h1();
-    if (t) { tg = t.cloneNode(false); tg.innerHTML = title; tg.className = (t.className + " tghost").trim(); t.parentElement.appendChild(tg); }
+    void title;
     ghKey = k; ghSide = side;
   };
-  const titles = (x, edge) => {
-    const t = h1(); if (!t) return;
-    const p = edge ? 0 : Math.min(1, Math.abs(x) / innerWidth), s = x < 0 ? -1 : 1;
-    t.style.transition = "none"; t.style.transform = "translate3d(" + (s * p * 60) + "px,0,0)"; t.style.opacity = String(1 - p * 1.4);
-    if (tg) { tg.style.transition = "none"; tg.style.transform = "translate3d(" + (-s * (1 - p) * 60) + "px,0,0)"; tg.style.opacity = String(Math.max(0, p * 1.4 - .4)); }
-  };
+  // Bovenin draait de logostrook mee met de veeg: positie = huidige lijst plus het geveegde deel.
+  const titles = (x, edge) => { const [, i] = lists(); STRIP.show(i - (edge ? x / innerWidth * .3 : x / innerWidth)); };
   const paint = () => {
     raf = 0; if (!on) return; const [ls, i] = lists(), edge = (dx > 0 && i <= 0) || (dx < 0 && i >= ls.length - 1);
     const x = edge ? dx / (1 + Math.abs(dx) / 60) : dx;
@@ -1824,17 +1897,19 @@ let swipeReset = () => {};
     busy = true;
     const t = h1();
     if (n === i || n < 0 || n >= ls.length || !gh) {
-      await Promise.all([anim(el, "translate3d(0,0,0)", null, 240), anim(t, "translate3d(0,0,0)", "1", 240), anim(tg, "translate3d(" + (dx < 0 ? 60 : -60) + "px,0,0)", "0", 240)]);
-      clearGhost(); el.style.transition = el.style.transform = el.style.willChange = ""; busy = false; return;
+      STRIP.to(i, 240);
+      await anim(el, "translate3d(0,0,0)", null, 240);
+      clearGhost(); el.style.transition = el.style.transform = el.style.willChange = ""; busy = false; STRIP.hide(1000); return;
     }
     // De buurlijst schuift precies op de plek van de huidige; daarna wordt hij echt getekend op dezelfde plek.
     const s = dx < 0 ? -1 : 1, ms = Math.max(160, Math.min(300, (W - Math.abs(dx)) * .9));
-    await Promise.all([anim(el, "translate3d(" + (s * W) + "px,0,0)", null, ms), anim(t, "translate3d(" + (s * 60) + "px,0,0)", "0", ms), anim(tg, "translate3d(0,0,0)", "1", ms)]);
+    STRIP.to(n, ms);
+    await anim(el, "translate3d(" + (s * W) + "px,0,0)", null, ms);
     clearGhost();
     el.style.transition = "none"; el.style.transform = "";
     switchList(ls[n], s);
     void el.offsetWidth; el.style.transition = el.style.willChange = "";
-    busy = false;
+    busy = false; STRIP.hide(1000);
   };
 
 })();
