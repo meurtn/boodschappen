@@ -741,7 +741,7 @@ function parse(t){
   return {name:t, qty:q, unit:u, explicit};
 }
 
-const APP_V = "61";
+const APP_V = "62";
 /* ---------- iconen ---------- */
 const IC = {
   list:"<path d='M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01'/>",
@@ -793,7 +793,7 @@ function back(){
   if (depth > 0) { depth--; history.back(); } else setHash(PARENT[route] || "lijst", true);
 }
 function home(){ if (route !== "lijst") go("lijst"); }
-function boot(){ migrate(); route = null; onRoute(); }
+function boot(){ migrate(); route = null; onRoute(); pushCheck(); }
 function migrate(){
   if (S.state && S.state.mig && S.state.mig.v >= 2) return;
   Object.entries(S.items).forEach(([k, v]) => { const ps = S.products[k] && S.products[k].store; if (!v.store && ps && storeList().some(s => s.id === ps)) DB.set("items", k, {store:ps}); });
@@ -1192,7 +1192,7 @@ function runFlash(){
   setTimeout(() => { if (host.firstChild === f) host.innerHTML = ""; flashBusy = false; runFlash(); }, flashQ.length ? 1600 : 2250);
 }
 function renderList(){
-  swipeReset();
+  swipeReset(); if (wantWatch) setTimeout(watchFromPush, 0);
   let shop = document.body.classList.contains("shop");
   const cur = curList(), nm = listName(cur);
   $("q").placeholder = cur === "boodschappen" ? "Voeg toe, bv. 2 paprika" : nm.length > 16 ? "Product toevoegen" : "Voeg toe aan " + nm;
@@ -1314,6 +1314,7 @@ PAGES.instellingen = () => {
     "<h3 class='ch'>Compactheid</h3><div class='range'><input type='range' id='densIn' min='0' max='3' step='1' value='" + DENS.indexOf(pref.get("dens", "a")) + "' aria-label='Compactheid van de lijst'><div class='ticks'>" + DENS_LABEL.map((l, i) => "<span style='left:" + (i * 100 / 3) + "%' class='" + (DENS[i] === pref.get("dens", "a") ? "on" : "") + "'>" + l + "</span>").join("") + "</div></div>" +
     "<div class='group preview' aria-hidden='true'>" + [["Bananen", 1, ""], ["Gehakt", 500, "g"], ["Melk", 2, ""]].map(([n, q, un], i) => rowHtml("vb" + i, {name:n, qty:q, unit:un})).join("") + "</div>" +
     "<p class='hint' style='margin:-4px 2px 0'>Geldt voor de lijsten op dit apparaat, ook in de winkelmodus. Die blijft per stand iets ruimer, zodat je onderweg makkelijk afvinkt.</p>" +
+    pushHtml() +
     "<h3 class='ch'>Lijsten</h3><div class='group'>" + navCell("schappen", undefined, "Schappen", CATS.length + " schappen", "tag") +
     "<div class='cell'><span class='grow'><span class='ct'>Lijst Boodschappen</span><span class='cs'>Voor als de winkel niet uitmaakt</span></span><button class='sw" + (useBs() ? " on" : "") + "' data-a='usebs' role='switch' aria-checked='" + useBs() + "' aria-label='Lijst Boodschappen gebruiken'><i></i></button></div>" +
     (useBs() ? "" : "<label class='cell'><span class='grow'><span class='ct'>Zonder vaste winkel naar</span><span class='cs'>Bv. via Bijna op of een template</span></span><select id='defSel'>" + storeList().map(s => "<option value='" + esc(s.id) + "'" + (s.id === defStore() ? " selected" : "") + ">" + esc(s.name) + "</option>").join("") + "</select>" + ico("down") + "</label>") + "</div>" +
@@ -1541,6 +1542,8 @@ const ACT = {
   istat:k => openCard("istat", k),
   pinzicht:k => openCard("prodinzicht", k),
   iper:k => { args.iper = k; render(true); },
+  pushtog:async () => { try { if (pushOn) await pushOff(); else await pushAan(); } catch (e) { toast(e.message || "Meldingen aanzetten lukte niet"); } render(true); },
+  pushtest:async () => { try { const r = await pushApi({soort:"test", apparaat:devId()}); toast(r.verstuurd ? "Proefmelding verstuurd" : "Proefmelding niet aangekomen"); } catch (e) { toast(e.message); } },
   pmerge:k => {
     const inp = $("mergeTo"), name = inp && inp.value.trim(); if (!name) return inp && inp.focus();
     const d = keyOf(name); if (d === k) return toast("Kies een ander product");
@@ -1572,6 +1575,7 @@ const ACT = {
     if (startMode === "edit") { const single = S.state.tour && S.state.tour.single; DB.set("state", "tour", single ? {stops:startSel.slice(), at:Date.now()} : {stops:startSel.slice(), route:startSel.slice(), at:Date.now()}); closeModal(); render(true); toast("Winkelronde aangepast"); return; }
     if (startMode === "stale") finishNow(true);
     const keep = (S.state.tour && (S.state.tour.route || S.state.tour.stops)) || [];
+    notifyTour(startSel);
     DB.set("state", "tour", only === true ? {stops:startSel.slice(), route:keep, single:true, active:true, by:me(), at:Date.now()} : {stops:startSel.slice(), route:startSel.slice(), single:false, active:true, by:me(), at:Date.now()});
     closeModal(); watchSeen = null; setShop(true); window.scrollTo(0, 0); toast("Tik om af te vinken, veeg opzij voor meer opties");
   },
@@ -1817,6 +1821,60 @@ const STRIP = (() => {
     tgt = e.target; tgt.addEventListener("touchmove", move, {passive:true}); tgt.addEventListener("touchend", end, {passive:true}); tgt.addEventListener("touchcancel", end, {passive:true});
   }, {passive:true});
 })();
+/* ---------- Pushmeldingen: als iemand anders gaat winkelen ----------
+   Dit apparaat meldt zich aan bij de pushdienst van de browser en zet het adres in Firestore (collectie "push").
+   Start iemand een winkelronde, dan vraagt zijn app aan /api/push (Cloudflare) om de anderen een melding te sturen.
+   Zelfde opzet als bij de SaSaa-site: Web Push met eigen VAPID-sleutels. */
+const VAPID_PUBLIC = "BKBPCEYEfIHXTpgAZ8SrdVfZmcpN0lKHXNLBrZckkrO4b3_ILo5Cyii1xKnGUjPhWSK2MPHtEIDt_hxRTr1AEkc";
+let pushOn = false;
+const devId = () => { let d = pref.get("devid", ""); if (!d) { d = "d" + Math.random().toString(36).slice(2, 12); pref.set("devid", d); } return d; };
+const pushKan = () => DB === Fire && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+const b64u = s => { const t = s.replace(/-/g, "+").replace(/_/g, "/"), b = atob(t + "=".repeat((4 - t.length % 4) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+async function pushCheck(){
+  if (!pushKan()) return;
+  try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); const was = pushOn; pushOn = !!sub && Notification.permission === "granted"; if (was !== pushOn && route === "instellingen") render(true); } catch {}
+}
+async function pushAan(){
+  if (!pushKan()) throw new Error("Meldingen werken alleen in de geinstalleerde app");
+  if ((await Notification.requestPermission()) !== "granted") throw new Error("Meldingen staan uit voor deze app in de instellingen van je telefoon");
+  const reg = await navigator.serviceWorker.ready;
+  const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({userVisibleOnly:true, applicationServerKey:b64u(VAPID_PUBLIC)});
+  const j = sub.toJSON();
+  await Fire.F.setDoc(Fire.F.doc(Fire.db, "push", devId()), {email:(user && user.email) || "", naam:me(), endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth, apparaat:navigator.userAgent.slice(0, 120), at:Date.now()});
+  pushOn = true; toast("Meldingen staan aan op dit apparaat");
+}
+async function pushOff(){
+  const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+  if (sub) await sub.unsubscribe().catch(() => {});
+  await Fire.F.deleteDoc(Fire.F.doc(Fire.db, "push", devId())).catch(() => {});
+  pushOn = false; toast("Meldingen staan uit op dit apparaat");
+}
+async function pushApi(body){
+  const r = await fetch("api/push", {method:"POST", headers:{"Content-Type":"application/json", Authorization:"Bearer " + await user.getIdToken()}, body:JSON.stringify(body)});
+  let j = {}; try { j = await r.json(); } catch {}
+  if (!r.ok) throw new Error(j.fout ? "Melding: " + j.fout : "Melding versturen lukte niet");
+  return j;
+}
+// Bij het starten van een ronde: de anderen een seintje geven. Stil als het niet lukt (bv. geen bereik).
+function notifyTour(stops){
+  if (DB !== Fire || !user) return;
+  const namen = stops.map(k => k.startsWith("s:") ? storeName(k.slice(2)) : (S.xlists[k.slice(2)] || {}).name).filter(Boolean);
+  pushApi({soort:"start", winkels:namen}).catch(() => {});
+}
+function pushHtml(){
+  if (!pushKan()) return "<h3 class='ch'>Meldingen</h3><div class='group'><div class='cell'><span class='grow'><span class='ct'>Melding als iemand gaat winkelen</span><span class='cs'>" + (DB === Fire ? "Installeer de app op je beginscherm om meldingen te krijgen." : "Werkt alleen in de gedeelde versie.") + "</span></span></div></div>";
+  return "<h3 class='ch'>Meldingen</h3><div class='group'><div class='cell'><span class='grow'><span class='ct'>Melding als iemand gaat winkelen</span><span class='cs'>Op dit apparaat, met een tik ga je meteen meekijken</span></span><button class='sw" + (pushOn ? " on" : "") + "' data-a='pushtog' role='switch' aria-checked='" + pushOn + "' aria-label='Melding als iemand gaat winkelen'><i></i></button></div>" +
+    (pushOn ? "<button class='cell' data-a='pushtest'><span class='grow'>Proefmelding sturen</span>" + ico("chevR") + "</button>" : "") + "</div>";
+}
+// Geopend via de melding: meteen meekijken zodra de gegevens er zijn.
+let wantWatch = /[?&]meekijken=1/.test(location.search);
+if (wantWatch) try { history.replaceState(null, "", location.pathname + location.hash); } catch {}
+function watchFromPush(){
+  if (!wantWatch || !ready) return; wantWatch = false;
+  const t = S.state.tour || {};
+  if (t.active && t.by && t.by !== me()) { if (route !== "lijst") go("lijst"); setTimeout(() => setWatch(true), 50); }
+  else toast("De winkelronde is al afgelopen");
+}
 let swipeReset = () => {};
 // Vegen naar links of rechts in een gewone lijst: de volgende of vorige lijst schuift er als echte pagina naast mee,
 // en de titel bovenin (logo en naam) schuift ook mee. Niet tijdens winkelen of meekijken.

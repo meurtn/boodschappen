@@ -34,3 +34,21 @@ self.addEventListener("fetch", e => {
     e.respondWith(Promise.race([net, slow]).catch(() => cached()).then(r => r || net));
   }
 });
+
+// Pushmelding (via /api/push): bv. "Anne is gaan winkelen". Tik opent de app en gaat meteen meekijken.
+self.addEventListener("push", e => {
+  let m = {}; try { m = e.data ? e.data.json() : {}; } catch { m = {tekst:e.data ? e.data.text() : ""}; }
+  e.waitUntil(self.registration.showNotification(String(m.titel || "Lijstjes").slice(0, 120), {
+    body:String(m.tekst || "").slice(0, 240), tag:m.tag || "lijstjes", renotify:true,
+    icon:"icon-192.png", badge:"icon-192.png", data:{url:m.url || "./"}
+  }));
+});
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const doel = new URL((e.notification.data && e.notification.data.url) || "./", self.registration.scope).href;
+  e.waitUntil(self.clients.matchAll({type:"window", includeUncontrolled:true}).then(ws => {
+    const w = ws.find(c => c.url.startsWith(self.registration.scope));
+    if (w) return w.navigate(doel).then(c => (c || w).focus()).catch(() => w.focus());
+    return self.clients.openWindow(doel);
+  }));
+});

@@ -5,3 +5,6 @@ firestore.local.rules
 .firebase/
 .firebaserc
 firebase-debug.log
+
+# Geheime pushsleutel: hoort alleen bij Cloudflare (VAPID_PRIVATE_KEY), niet in git
+vapid-private.local.txt

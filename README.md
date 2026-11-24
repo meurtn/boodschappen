@@ -49,3 +49,12 @@ De toegang wordt afgedwongen door `firestore.local.rules` op de server, niet in 
 - `state/cfg`: of de lijst Boodschappen aan staat en de standaardwinkel. `state/mig`: welke eenmalige omzetting al gedaan is.
 
 Per apparaat (niet gedeeld) worden alleen het thema, de compactheid en de laatst geopende lijst onthouden.
+
+## Pushmeldingen (Cloudflare Pages)
+
+Start iemand een winkelronde, dan krijgen de anderen een melding ("Anne is gaan winkelen"); met een tik ga je meteen meekijken. Zelfde opzet als bij de SaSaa-site: Web Push met eigen VAPID-sleutels, verstuurd door `functions/api/push.js`.
+
+- De app draait op Cloudflare Pages, gekoppeld aan deze repository (geen buildopdracht, uitvoermap `/`). Elke push naar `main` zet hem live, inclusief de functie.
+- Variabelen bij Cloudflare (Pages, Settings, Variables and Secrets): `VAPID_PUBLIC_KEY` (gewoon) en `VAPID_PRIVATE_KEY` (Secret). Beide staan in `vapid-private.local.txt` (niet in git). De openbare sleutel staat ook in `index.html`.
+- Aanmelden doet ieder apparaat zelf in Meer, Instellingen, Meldingen. Het adres komt in Firestore-collectie `push`; de functie leest die met het token van de winkelaar, dus alleen het gezin kan meldingen laten versturen.
+- Het Cloudflare-adres (`*.pages.dev`) moet in Firebase bij Authentication, Settings, Authorized domains staan.
